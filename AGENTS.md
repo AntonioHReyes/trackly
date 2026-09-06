@@ -1,0 +1,73 @@
+# Repository guidelines for AI agents
+
+This file applies to the whole repository. All code, comments, CLI copy,
+commit messages, and docs must be in **English**.
+
+## Architecture
+
+Trackly is layered (Clean Architecture-ish), and dependencies only point
+inward:
+
+```
+src/
+├── domain/          entities, value objects, repository interfaces, errors
+│                    — no framework or I/O code
+├── application/      use cases (*Service) that orchestrate domain objects
+│                    through repository/port interfaces
+├── infrastructure/  concrete implementations: SQLite repositories, config
+│                    stores, PDF/CSV exporters, the MCP server
+└── cli/             Commander wiring only — parses argv, calls a service,
+                     prints the result. No business logic here.
+```
+
+- `domain` never imports from `application`, `infrastructure`, or `cli`.
+- `application` depends on `domain` interfaces (ports), never on concrete
+  `infrastructure` classes — those are injected via `src/cli/container.ts`.
+- New features get a domain/application piece first, an infrastructure
+  implementation second, and a thin `cli/commands/*.ts` file last.
+
+## Conventions
+
+- SOLID, small single-purpose files. If a command file starts doing more
+  than argv parsing + one service call, extract logic into the service.
+- Constructor injection everywhere — no service reaches for a global or
+  constructs its own dependencies. This is what makes the layers testable
+  and swappable, and it's enforced by `@typescript-eslint/no-explicit-any`.
+- Prefer explicit types over inference at public boundaries (service
+  methods, repository interfaces).
+- Errors that should produce a clean CLI message extend `DomainError`
+  (`src/domain/errors/DomainError.ts`); anything else is a bug and should
+  surface as a stack trace, not be silently swallowed.
+
+## Workflow
+
+```bash
+pnpm install
+pnpm dev -- <args>   # run the CLI from source, e.g. pnpm dev -- list
+pnpm test            # vitest, tests live under tests/ mirroring src/
+pnpm lint            # eslint, must pass before committing
+pnpm format          # prettier --write
+pnpm build            # tsc -> dist/
+```
+
+- Every new service/repository/exporter should have a corresponding test
+  under `tests/`, mirroring the `src/` path.
+- Run `pnpm lint` and `pnpm test` before considering a change done — CI
+  runs both on every push and blocks npm publish otherwise.
+- Commit messages: imperative mood, explain *why* when it's not obvious
+  from the diff (`feat: ...`, `fix: ...`, `chore: ...` prefixes are used
+  throughout the history).
+
+## Releasing
+
+Publishing is tag-driven (`.github/workflows/*.yml`): pushing a `vX.Y.Z`
+tag runs tests, builds, publishes to npm with provenance, and creates a
+GitHub release. Bump `version` in `package.json` before tagging.
+
+## Do not
+
+- Do not add native-dependency libraries for charts/PDF rendering (see the
+  hand-built SVG chart code under `src/infrastructure/reporting/charts/`)
+  — the whole point is `npm install -g` working with zero build tools.
+- Do not put business logic in `src/cli/commands/*` — those files should
+  stay thin.

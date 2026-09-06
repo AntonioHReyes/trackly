@@ -1,0 +1,66 @@
+{
+  "name": "@tonyakitori/trackly",
+  "version": "0.1.5",
+  "description": "Time-tracking CLI with workspaces, projects, tags, rates, PDF/CSV reports, PDF invoices, and an MCP server.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Antonio Huerta Reyes",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AntonioHReyes/trackly.git"
+  },
+  "homepage": "https://github.com/AntonioHReyes/trackly#readme",
+  "bugs": {
+    "url": "https://github.com/AntonioHReyes/trackly/issues"
+  },
+  "keywords": [
+    "cli",
+    "time-tracking",
+    "toggl",
+    "invoicing",
+    "mcp",
+    "mcp-server"
+  ],
+  "bin": {
+    "tck": "dist/cli/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli/index.ts",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "better-sqlite3": "^11.10.0",
+    "commander": "^12.1.0",
+    "pdfkit": "^0.15.1",
+    "svg-to-pdfkit": "^0.1.8",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.10.2",
+    "@types/pdfkit": "^0.13.4",
+    "@types/svg-to-pdfkit": "^0.1.4",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1",
+    "vitest": "^5.0.0"
+  }
+}
