@@ -1,0 +1,70 @@
+name: Release
+
+# Bumps package.json, commits "chore: release vX.Y.Z", and tags it on every
+# push to main. Pushing that tag is what triggers publish.yml — this
+# workflow never touches npm/GitHub releases itself.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '.github/workflows/**'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # The release commit this job pushes re-triggers this workflow; skip it
+    # instead of releasing forever.
+    if: "!startsWith(github.event.head_commit.message, 'chore: release')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test
+        run: pnpm test
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      # Conventional-commit-ish: "feat:" -> minor, "<type>!:"/"BREAKING
+      # CHANGE" -> major, everything else (fix/chore/docs/...) -> patch.
+      - name: Determine version bump
+        id: bump
+        env:
+          MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          if echo "$MESSAGE" | grep -qE '^[a-z]+(\(.+\))?!:|BREAKING CHANGE'; then
+            echo "type=major" >> "$GITHUB_OUTPUT"
+          elif echo "$MESSAGE" | grep -qE '^feat(\(.+\))?:'; then
+            echo "type=minor" >> "$GITHUB_OUTPUT"
+          else
+            echo "type=patch" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump version, commit and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          npm version ${{ steps.bump.outputs.type }} -m "chore: release v%s"
+
+      - name: Push release commit and tag
+        run: git push origin HEAD:main --follow-tags

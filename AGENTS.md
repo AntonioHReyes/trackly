@@ -60,9 +60,21 @@ pnpm build            # tsc -> dist/
 
 ## Releasing
 
-Publishing is tag-driven (`.github/workflows/*.yml`): pushing a `vX.Y.Z`
-tag runs tests, builds, publishes to npm with provenance, and creates a
-GitHub release. Bump `version` in `package.json` before tagging.
+Fully automated, in two chained workflows:
+
+1. `.github/workflows/release.yml` runs on every push to `main` (except
+   changes only under `.github/workflows/`). It reads the triggering
+   commit's message for a Conventional-Commits-ish prefix (`feat:` → minor,
+   `<type>!:`/`BREAKING CHANGE` → major, anything else → patch), bumps
+   `package.json` with `npm version`, commits it as `chore: release
+   vX.Y.Z`, and pushes the commit + tag. It skips itself on `chore:
+   release` commits to avoid looping.
+2. That tag push triggers `.github/workflows/publish.yml`: tests, builds,
+   `npm publish --provenance`, and creates the GitHub release.
+
+Never bump `version` or tag by hand — every push to `main` releases
+something. Write commit messages with the prefix that matches the intended
+bump.
 
 ## Do not
 
