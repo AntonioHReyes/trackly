@@ -7,3 +7,4 @@ export * from "./ansi.js";
 export * from "./format.js";
 export * from "./table.js";
 export * from "./messages.js";
+export * from "./chart.js";

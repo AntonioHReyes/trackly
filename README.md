@@ -25,8 +25,9 @@ of the same data — without leaving the shell.
 - **Projects, tags, rates** — hourly rates resolve project → workspace, so
   you only override where it differs.
 - **Reports & exports** — PDF reports with charts (bar/donut, hand-built
-  SVG, zero native deps) and flat CSV exports, both with the same date and
-  filter shortcuts.
+  SVG, zero native deps), flat CSV exports, and ANSI bar charts straight in
+  the terminal (`report chart`), all sharing the same date and filter
+  shortcuts.
 - **Invoices** — PDF invoices priced from billable time, with tax, saved
   defaults, and an auto-incrementing number template.
 - **Report presets** — save a recurring filter combination once, reuse it
@@ -129,11 +130,16 @@ last day); `--last-N-days` are rolling windows that include today.
 tck report pdf --this-month -o report.pdf
 tck report pdf --last-month --project Website -o september.pdf
 tck export csv --from 2026-01-01 --to 2026-02-01 -o export.csv
+tck report chart --this-week                      # bar charts, right in the terminal
+tck report chart --this-month --section projects  # just the by-project breakdown
 ```
 
-Both accept `--project`, `--tag`, `--billable`/`--non-billable`, and
+All three accept `--project`, `--tag`, `--billable`/`--non-billable`, and
 rounding flags (`--rounding`, `--rounding-minutes`), on top of the date
-shortcuts above.
+shortcuts above. `report chart` renders the same hours-by-day and
+hours-by-project data as `report pdf`, as ANSI bar charts instead of a
+file — handy for a quick look without opening anything. `--section days
+| projects | both` picks which one to show (default `both`).
 
 ### Invoices
 
