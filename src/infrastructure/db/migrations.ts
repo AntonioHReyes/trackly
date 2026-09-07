@@ -67,4 +67,23 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 2,
+    up: (db) => {
+      // Freezes the rate each entry bills at, instead of resolving it live
+      // from the project/workspace on every report. Existing rows are
+      // backfilled with whatever resolves *today* (project rate, falling
+      // back to the workspace default) so a future rate change doesn't
+      // retroactively reprice them — see SPEC.md's rate-resolution rule.
+      db.exec(`
+        ALTER TABLE time_entries ADD COLUMN rate REAL;
+
+        UPDATE time_entries
+        SET rate = COALESCE(
+          (SELECT p.hourly_rate FROM projects p WHERE p.id = time_entries.project_id),
+          (SELECT w.default_hourly_rate FROM workspaces w WHERE w.id = time_entries.workspace_id)
+        );
+      `);
+    },
+  },
 ];

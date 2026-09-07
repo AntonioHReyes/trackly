@@ -58,6 +58,32 @@ describe("TimeEntry", () => {
     expect(withGit.git).toEqual({ repo: "trackly", commit: "abc123", branch: "main" });
   });
 
+  it("start() and addManual() carry the rate snapshot passed by the caller", () => {
+    const started = TimeEntry.start({ workspaceId: "ws-1", description: "Coding", rate: 50 });
+    expect(started.rate).toBe(50);
+
+    const added = TimeEntry.addManual({
+      workspaceId: "ws-1",
+      description: "Coding",
+      startTs: new Date("2026-01-01T09:00:00Z"),
+      endTs: new Date("2026-01-01T10:00:00Z"),
+    });
+    expect(added.rate).toBeNull();
+  });
+
+  it("withUpdates() re-snapshots the rate only when told to", () => {
+    const entry = TimeEntry.addManual({
+      workspaceId: "ws-1",
+      description: "Coding",
+      startTs: new Date("2026-01-01T09:00:00Z"),
+      endTs: new Date("2026-01-01T10:00:00Z"),
+      rate: 50,
+    });
+    expect(entry.withUpdates({ description: "Renamed" }).rate).toBe(50);
+    expect(entry.withUpdates({ rate: 75 }).rate).toBe(75);
+    expect(entry.withUpdates({ rate: null }).rate).toBeNull();
+  });
+
   it("durationHours() measures a running entry against `now`", () => {
     const start = new Date("2026-01-01T09:00:00Z");
     const entry = TimeEntry.start({ workspaceId: "ws-1", description: "Coding", startTs: start });

@@ -1,4 +1,6 @@
 import { TimeEntry, type GitMetadata } from "../../domain/entities/TimeEntry.js";
+import type { Project } from "../../domain/entities/Project.js";
+import type { WorkspaceRepository } from "../../domain/repositories/WorkspaceRepository.js";
 import type {
   TimeEntryFilter,
   TimeEntryRepository,
@@ -17,6 +19,12 @@ export interface TimeEntryEdit {
   endTs?: Date | null;
   billable?: boolean;
   tagIds?: readonly string[];
+  /**
+   * Manual override for the entry's billed rate (e.g. a one-off higher rate
+   * for a single entry) — takes precedence over the re-snapshot that a
+   * `projectId` change would otherwise trigger. `null` marks it unbilled.
+   */
+  rate?: number | null;
 }
 
 /**
@@ -28,6 +36,7 @@ export class TimeEntryService {
   constructor(
     private readonly entries: TimeEntryRepository,
     private readonly projects: ProjectRepository,
+    private readonly workspaces: WorkspaceRepository,
   ) {}
 
   async start(params: {
@@ -36,15 +45,19 @@ export class TimeEntryService {
     projectId?: string | null;
     billable?: boolean;
     tagIds?: readonly string[];
+    /** Manual override; when omitted, resolved from the project/workspace rate. */
+    rate?: number | null;
   }): Promise<TimeEntry> {
-    if (params.projectId) {
-      await this.assertProjectInWorkspace(params.projectId, params.workspaceId);
-    }
+    const project = params.projectId
+      ? await this.assertProjectInWorkspace(params.projectId, params.workspaceId)
+      : null;
     const running = await this.entries.findRunning(params.workspaceId);
     if (running) {
       await this.entries.save(running.stop());
     }
-    const entry = TimeEntry.start(params);
+    const rate =
+      params.rate !== undefined ? params.rate : await this.resolveRate(params.workspaceId, project);
+    const entry = TimeEntry.start({ ...params, rate });
     await this.entries.save(entry);
     return entry;
   }
@@ -67,21 +80,35 @@ export class TimeEntryService {
     projectId?: string | null;
     billable?: boolean;
     tagIds?: readonly string[];
+    /** Manual override; when omitted, resolved from the project/workspace rate. */
+    rate?: number | null;
   }): Promise<TimeEntry> {
-    if (params.projectId) {
-      await this.assertProjectInWorkspace(params.projectId, params.workspaceId);
-    }
-    const entry = TimeEntry.addManual(params);
+    const project = params.projectId
+      ? await this.assertProjectInWorkspace(params.projectId, params.workspaceId)
+      : null;
+    const rate =
+      params.rate !== undefined ? params.rate : await this.resolveRate(params.workspaceId, project);
+    const entry = TimeEntry.addManual({ ...params, rate });
     await this.entries.save(entry);
     return entry;
   }
 
   async edit(id: string, updates: TimeEntryEdit): Promise<TimeEntry> {
     const entry = await this.getById(id);
-    if (updates.projectId) {
-      await this.assertProjectInWorkspace(updates.projectId, entry.workspaceId);
+    // An explicit `rate` always wins. Otherwise, reassigning the project
+    // changes which rate applies, so it's re-snapshotted here too — every
+    // other field leaves the entry's billed rate untouched, same as the git
+    // metadata on it.
+    let rateUpdate: { rate: number | null } | Record<string, never> = {};
+    if (updates.rate !== undefined) {
+      rateUpdate = { rate: updates.rate };
+    } else if (updates.projectId !== undefined) {
+      const project = updates.projectId
+        ? await this.assertProjectInWorkspace(updates.projectId, entry.workspaceId)
+        : null;
+      rateUpdate = { rate: await this.resolveRate(entry.workspaceId, project) };
     }
-    const updated = entry.withUpdates(updates);
+    const updated = entry.withUpdates({ ...updates, ...rateUpdate });
     await this.entries.save(updated);
     return updated;
   }
@@ -136,10 +163,21 @@ export class TimeEntryService {
     return match;
   }
 
-  private async assertProjectInWorkspace(projectId: string, workspaceId: string): Promise<void> {
+  private async assertProjectInWorkspace(projectId: string, workspaceId: string): Promise<Project> {
     const project = await this.projects.findById(projectId);
     if (!project || project.workspaceId !== workspaceId) {
       throw new NotFoundError("Project", projectId);
     }
+    return project;
+  }
+
+  /** Resolves the rate to snapshot on an entry: project rate, else workspace default. */
+  private async resolveRate(workspaceId: string, project: Project | null): Promise<number | null> {
+    const workspace = await this.workspaces.findById(workspaceId);
+    if (!workspace) {
+      throw new NotFoundError("Workspace", workspaceId);
+    }
+    const rate = project ? project.resolveRate(workspace) : workspace.resolveDefaultRate();
+    return rate ? rate.toDecimal() : null;
   }
 }

@@ -5,6 +5,7 @@ import type {
 import type { ProjectRepository } from "../../domain/repositories/ProjectRepository.js";
 import type { TagRepository } from "../../domain/repositories/TagRepository.js";
 import type { Workspace } from "../../domain/entities/Workspace.js";
+import type { Project } from "../../domain/entities/Project.js";
 import type { TimeEntry } from "../../domain/entities/TimeEntry.js";
 import { Money } from "../../domain/value-objects/Money.js";
 import { Rounding } from "../../domain/value-objects/Rounding.js";
@@ -23,6 +24,12 @@ export interface ProjectHours {
   amount: Money;
   /** The rate this project's billable amount was computed at, or `null` if none resolves. */
   rate: Money | null;
+  /**
+   * Billable hours within this project that had no resolvable rate (so
+   * they're excluded from `amount`) — entries can differ here from their
+   * project's *current* rate, since each carries the rate it was billed at.
+   */
+  unbilledHours: number;
 }
 
 /** Knobs that change how raw entries are aggregated, without changing what is stored. */
@@ -125,19 +132,22 @@ export class ReportService {
         billableHours: 0,
         amount: Money.zero(workspace.currency),
         rate: null,
+        unbilledHours: 0,
       };
       bucket.hours += hours;
       byProject.set(key, bucket);
 
       if (entry.billable) {
         bucket.billableHours += hours;
-        const rate = project ? project.resolveRate(workspace) : workspace.resolveDefaultRate();
+        const rate = ReportService.resolveEntryRate(entry, project, workspace);
         if (rate) {
           bucket.rate = rate;
           const amount = rate.multiply(hours);
           billableAmount = billableAmount.add(amount);
           bucket.amount = bucket.amount.add(amount);
           amountByEntryId.set(entry.id, amount);
+        } else {
+          bucket.unbilledHours += hours;
         }
       }
     }
@@ -169,9 +179,27 @@ export class ReportService {
           billableHours: v.billableHours,
           amount: v.amount,
           rate: v.rate,
+          unbilledHours: v.unbilledHours,
         }))
         .sort((a, b) => b.hours - a.hours),
     };
+  }
+
+  /**
+   * The rate an entry's amount is priced at: its own frozen snapshot if it
+   * has one, otherwise today's project/workspace rate. The fallback only
+   * matters for entries that predate rate-snapshotting (see migration 2) —
+   * every entry created since always carries its own rate.
+   */
+  private static resolveEntryRate(
+    entry: TimeEntry,
+    project: Project | undefined,
+    workspace: Workspace,
+  ): Money | null {
+    if (entry.rate !== null) {
+      return Money.fromDecimal(entry.rate, workspace.currency);
+    }
+    return project ? project.resolveRate(workspace) : workspace.resolveDefaultRate();
   }
 
   /**
@@ -235,6 +263,7 @@ interface ProjectBucket {
   billableHours: number;
   amount: Money;
   rate: Money | null;
+  unbilledHours: number;
 }
 
 /** `YYYY-MM-DD` in local time — `toISOString()` would shift the day by the UTC offset. */

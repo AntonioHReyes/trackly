@@ -63,17 +63,20 @@ export class InvoiceService {
     const lineItems: InvoiceLineItem[] = [];
     let unbilledHours = 0;
     for (const project of report.hoursByProject) {
-      if (project.rate) {
+      // A project's billable hours can be a mix of priced and unresolvable
+      // now that each entry carries its own frozen rate — no longer the
+      // all-or-nothing split a single project-wide rate used to guarantee.
+      const billedHours = project.billableHours - project.unbilledHours;
+      if (project.rate && billedHours > 0) {
         lineItems.push({
           projectId: project.projectId,
           projectName: project.projectName,
-          hours: project.billableHours,
+          hours: billedHours,
           rate: project.rate,
           amount: project.amount,
         });
-      } else {
-        unbilledHours += project.billableHours;
       }
+      unbilledHours += project.unbilledHours;
     }
 
     const subtotal = report.billableAmount;

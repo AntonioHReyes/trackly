@@ -58,7 +58,7 @@ export class Container {
     this.workspaceService = new WorkspaceService(workspaces, activeWorkspaceStore);
     this.projectService = new ProjectService(projects);
     this.tagService = new TagService(tags);
-    this.timeEntryService = new TimeEntryService(timeEntries, projects);
+    this.timeEntryService = new TimeEntryService(timeEntries, projects, workspaces);
     this.reportService = new ReportService(timeEntries, projects, tags);
     this.invoiceService = new InvoiceService(this.reportService);
     this.pdfReportExporter = new PdfReportExporter();

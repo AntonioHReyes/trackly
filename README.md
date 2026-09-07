@@ -23,7 +23,9 @@ of the same data — without leaving the shell.
 - **Timers & manual entries** — `start`/`stop` a running timer, or `add` a
   completed entry with an explicit range.
 - **Projects, tags, rates** — hourly rates resolve project → workspace, so
-  you only override where it differs.
+  you only override where it differs. Each entry freezes the rate it
+  resolved to when created, so a later rate change never repriced work
+  already tracked.
 - **Reports & exports** — PDF reports with charts (bar/donut, hand-built
   SVG, zero native deps), flat CSV exports, and ANSI bar charts straight in
   the terminal (`report chart`), all sharing the same date and filter
@@ -103,12 +105,39 @@ tck edit <id> --description "Fixing the checkout bug (follow-up)"
 tck rm <id>
 ```
 
+`start`/`add`/`edit` all take a `--rate <amount>` to bill that one entry at a
+specific rate instead of what the project/workspace resolves to — see
+[Rates](#rates).
+
 ### Rates
 
 ```bash
 tck rate set 50                    # workspace default
 tck rate set 90 --project Website  # project override
 ```
+
+Every time entry snapshots the rate it resolved to (project rate, falling
+back to the workspace default) the moment it's created. Reports and invoices
+always bill an entry at *its own* frozen rate, so raising `tck rate set`
+tomorrow only affects entries tracked from then on — it never retroactively
+reprices what you already logged.
+
+Need to bill a single entry differently from what it would otherwise
+resolve to (a one-off rush rate, a discount, a fixed price)? Override it
+directly, at creation or after the fact:
+
+```bash
+tck add "Rush job" --project Website --from ... --to ... --rate 300
+tck start "Weekend on-call" --rate 150
+tck edit <id> --rate 999          # repriced after the fact
+```
+
+There's no CLI flag to clear a manual override back to auto-resolved yet —
+reassigning the entry to its current project (`tck edit <id> --project
+Website`) re-snapshots it from the project/workspace rate instead.
+
+`tck list`, `tck show`, and `tck status` all display the rate an entry is
+billed at (or `—` when none resolves, e.g. no rate configured anywhere).
 
 ### Git-hook linking
 

@@ -114,6 +114,27 @@ describe("ReportService", () => {
     expect(data.nonBillableHours).toBeCloseTo(1);
   });
 
+  it("prices an entry at its own frozen rate, not the project's current one", async () => {
+    const entry = TimeEntry.addManual({
+      workspaceId: workspace.id,
+      description: "Billed before the raise",
+      startTs: new Date("2026-01-01T09:00:00Z"),
+      endTs: new Date("2026-01-01T11:00:00Z"),
+      projectId: project.id,
+      rate: 40, // frozen when the project's rate was still $40
+    });
+    await entries.save(entry);
+
+    // The project rate goes up afterwards...
+    await projects.save(project.withUpdates({ hourlyRate: 500 }));
+
+    const data = await service.build(workspace, { workspaceId: workspace.id });
+
+    // ...but the entry still bills at the rate it was created with.
+    expect(data.amountByEntryId.get(entry.id)?.toDecimal()).toBeCloseTo(80); // 2h * $40
+    expect(data.hoursByProject[0]?.rate?.toDecimal()).toBeCloseTo(40);
+  });
+
   it("resolves project and tag names for lookups", async () => {
     const entry = TimeEntry.addManual({
       workspaceId: workspace.id,

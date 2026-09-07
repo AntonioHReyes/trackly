@@ -54,6 +54,27 @@ describe("SqliteTimeEntryRepository", () => {
     expect(found?.tagIds).toEqual([tagId]);
   });
 
+  it("round-trips the rate snapshot, including null", async () => {
+    const withRate = TimeEntry.addManual({
+      workspaceId,
+      description: "Priced",
+      startTs: new Date("2026-01-01T09:00:00Z"),
+      endTs: new Date("2026-01-01T10:00:00Z"),
+      rate: 42.5,
+    });
+    const withoutRate = TimeEntry.addManual({
+      workspaceId,
+      description: "Unpriced",
+      startTs: new Date("2026-01-01T09:00:00Z"),
+      endTs: new Date("2026-01-01T10:00:00Z"),
+    });
+    await repo.save(withRate);
+    await repo.save(withoutRate);
+
+    expect((await repo.findById(withRate.id))?.rate).toBe(42.5);
+    expect((await repo.findById(withoutRate.id))?.rate).toBeNull();
+  });
+
   it("round-trips git metadata", async () => {
     const entry = TimeEntry.addManual({
       workspaceId,

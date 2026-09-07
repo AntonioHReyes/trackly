@@ -20,6 +20,13 @@ export interface TimeEntryProps {
   git: GitMetadata | null;
   source: TimeEntrySource;
   tagIds: readonly string[];
+  /**
+   * The hourly rate this entry bills at, frozen at creation time (or `null`
+   * if none resolved then). Snapshotting it here — rather than resolving the
+   * project/workspace rate live on every report — means a later rate change
+   * doesn't retroactively reprice work already tracked.
+   */
+  rate: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,6 +47,7 @@ export class TimeEntry {
   readonly git: GitMetadata | null;
   readonly source: TimeEntrySource;
   readonly tagIds: readonly string[];
+  readonly rate: number | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 
@@ -54,6 +62,7 @@ export class TimeEntry {
     this.git = props.git;
     this.source = props.source;
     this.tagIds = props.tagIds;
+    this.rate = props.rate;
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
   }
@@ -66,6 +75,8 @@ export class TimeEntry {
     billable?: boolean;
     tagIds?: readonly string[];
     startTs?: Date;
+    /** Rate to snapshot, resolved by the caller (see `TimeEntryService`). */
+    rate?: number | null;
   }): TimeEntry {
     const now = new Date();
     return new TimeEntry({
@@ -79,6 +90,7 @@ export class TimeEntry {
       git: null,
       source: "manual",
       tagIds: params.tagIds ?? [],
+      rate: params.rate ?? null,
       createdAt: now,
       updatedAt: now,
     });
@@ -93,6 +105,8 @@ export class TimeEntry {
     projectId?: string | null;
     billable?: boolean;
     tagIds?: readonly string[];
+    /** Rate to snapshot, resolved by the caller (see `TimeEntryService`). */
+    rate?: number | null;
   }): TimeEntry {
     TimeEntry.validateRange(params.startTs, params.endTs);
     const now = new Date();
@@ -107,6 +121,7 @@ export class TimeEntry {
       git: null,
       source: "manual",
       tagIds: params.tagIds ?? [],
+      rate: params.rate ?? null,
       createdAt: now,
       updatedAt: now,
     });
@@ -141,6 +156,8 @@ export class TimeEntry {
     endTs?: Date | null;
     billable?: boolean;
     tagIds?: readonly string[];
+    /** Re-snapshotted by the caller when `projectId` changes (new rate applies). */
+    rate?: number | null;
   }): TimeEntry {
     const startTs = updates.startTs ?? this.startTs;
     const endTs = updates.endTs !== undefined ? updates.endTs : this.endTs;
@@ -158,6 +175,7 @@ export class TimeEntry {
       endTs,
       billable: updates.billable !== undefined ? updates.billable : this.billable,
       tagIds: updates.tagIds ?? this.tagIds,
+      rate: updates.rate !== undefined ? updates.rate : this.rate,
       updatedAt: new Date(),
     });
   }

@@ -77,6 +77,38 @@ describe("InvoiceService", () => {
     expect(invoice.subtotal.toDecimal()).toBe(0);
   });
 
+  it("splits a project's billable hours into priced and unbilled when rates mix", async () => {
+    await entries.save(
+      TimeEntry.addManual({
+        workspaceId: workspace.id,
+        description: "Priced before the project ever had a rate",
+        startTs: new Date("2026-01-01T09:00:00Z"),
+        endTs: new Date("2026-01-01T10:00:00Z"),
+        projectId: project.id,
+        rate: 30,
+      }),
+    );
+    await projects.save(project.withUpdates({ hourlyRate: null }));
+    await entries.save(
+      TimeEntry.addManual({
+        workspaceId: workspace.id,
+        description: "Tracked while the project had no rate",
+        startTs: new Date("2026-01-02T09:00:00Z"),
+        endTs: new Date("2026-01-02T10:00:00Z"),
+        projectId: project.id,
+      }),
+    );
+
+    const details = InvoiceDetails.create({ number: "INV-4" });
+    const invoice = await service.build(workspace, { workspaceId: workspace.id }, details);
+
+    expect(invoice.lineItems).toEqual([
+      expect.objectContaining({ projectName: "Website", hours: 1, rate: expect.anything() }),
+    ]);
+    expect(invoice.subtotal.toDecimal()).toBeCloseTo(30);
+    expect(invoice.unbilledHours).toBeCloseTo(1);
+  });
+
   it("ignores non-billable entries entirely, even if the caller's filter doesn't", async () => {
     await entries.save(
       TimeEntry.addManual({

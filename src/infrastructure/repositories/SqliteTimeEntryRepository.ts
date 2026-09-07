@@ -21,6 +21,7 @@ interface TimeEntryRow {
   git_commit: string | null;
   git_branch: string | null;
   source: string;
+  rate: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -39,10 +40,10 @@ export class SqliteTimeEntryRepository implements TimeEntryRepository {
         .prepare(
           `INSERT INTO time_entries (
              id, workspace_id, project_id, description, start_ts, end_ts,
-             billable, git_repo, git_commit, git_branch, source, created_at, updated_at
+             billable, git_repo, git_commit, git_branch, source, rate, created_at, updated_at
            ) VALUES (
              @id, @workspaceId, @projectId, @description, @startTs, @endTs,
-             @billable, @gitRepo, @gitCommit, @gitBranch, @source, @createdAt, @updatedAt
+             @billable, @gitRepo, @gitCommit, @gitBranch, @source, @rate, @createdAt, @updatedAt
            )
            ON CONFLICT(id) DO UPDATE SET
              project_id = excluded.project_id,
@@ -54,6 +55,7 @@ export class SqliteTimeEntryRepository implements TimeEntryRepository {
              git_commit = excluded.git_commit,
              git_branch = excluded.git_branch,
              source = excluded.source,
+             rate = excluded.rate,
              updated_at = excluded.updated_at`,
         )
         .run(SqliteTimeEntryRepository.toRow(e));
@@ -184,6 +186,7 @@ export class SqliteTimeEntryRepository implements TimeEntryRepository {
       gitCommit: entry.git?.commit ?? null,
       gitBranch: entry.git?.branch ?? null,
       source: entry.source,
+      rate: entry.rate,
       createdAt: entry.createdAt.toISOString(),
       updatedAt: entry.updatedAt.toISOString(),
     };
@@ -205,6 +208,7 @@ export class SqliteTimeEntryRepository implements TimeEntryRepository {
       git,
       source: row.source as TimeEntrySource,
       tagIds,
+      rate: row.rate,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
     });

@@ -24,7 +24,13 @@ const ENTRY_COLUMNS: ui.Column[] = [
   { header: "Description", maxWidth: DESCRIPTION_MAX_WIDTH },
   { header: "Project" },
   { header: "Bill" },
+  { header: "Rate", align: "right" },
 ];
+
+/** The rate an entry is billed at (frozen on it), or a dash if unresolved/non-billable. */
+function rateCell(entry: TimeEntry, currency: string): string {
+  return entry.rate !== null ? `${ui.formatMoney(entry.rate, currency)}/h` : ui.dim("—");
+}
 
 function durationCell(entry: TimeEntry): string {
   return entry.isRunning()
@@ -36,7 +42,7 @@ function billableCell(entry: TimeEntry): string {
   return entry.billable ? ui.green("$") : ui.dim("–");
 }
 
-function entryRow(entry: TimeEntry, projectName?: string): string[] {
+function entryRow(entry: TimeEntry, currency: string, projectName?: string): string[] {
   return [
     ui.dim(ui.shortId(entry.id)),
     ui.formatLocalDateTime(entry.startTs),
@@ -44,6 +50,7 @@ function entryRow(entry: TimeEntry, projectName?: string): string[] {
     entry.description,
     ui.orDash(projectName && ui.cyan(projectName)),
     billableCell(entry),
+    rateCell(entry, currency),
   ];
 }
 
@@ -57,10 +64,14 @@ export function registerEntryCommands(program: Command, container: Container): v
     .option("--project <name>", "project name")
     .option("--tags <names>", "comma-separated tag names")
     .option("--no-billable", "mark as non-billable")
+    .option(
+      "--rate <amount>",
+      "bill this entry at a specific rate instead of the project/workspace one",
+    )
     .action(
       async (
         description: string,
-        options: { project?: string; tags?: string; billable: boolean },
+        options: { project?: string; tags?: string; billable: boolean; rate?: string },
       ) => {
         const workspace = await container.workspaceService.resolveActive(workspaceOverride());
         const projectId = options.project
@@ -75,6 +86,7 @@ export function registerEntryCommands(program: Command, container: Container): v
           projectId,
           billable: options.billable,
           tagIds,
+          ...(options.rate !== undefined ? { rate: Number.parseFloat(options.rate) } : {}),
         });
         const where = options.project ? ` in ${ui.cyan(options.project)}` : "";
         ui.success(`Started ${ui.em(entry.description)}${where}`);
@@ -104,10 +116,21 @@ export function registerEntryCommands(program: Command, container: Container): v
     .option("--project <name>", "project name")
     .option("--tags <names>", "comma-separated tag names")
     .option("--no-billable", "mark as non-billable")
+    .option(
+      "--rate <amount>",
+      "bill this entry at a specific rate instead of the project/workspace one",
+    )
     .action(
       async (
         description: string,
-        options: { from: string; to: string; project?: string; tags?: string; billable: boolean },
+        options: {
+          from: string;
+          to: string;
+          project?: string;
+          tags?: string;
+          billable: boolean;
+          rate?: string;
+        },
       ) => {
         const workspace = await container.workspaceService.resolveActive(workspaceOverride());
         const projectId = options.project
@@ -124,6 +147,7 @@ export function registerEntryCommands(program: Command, container: Container): v
           projectId,
           billable: options.billable,
           tagIds,
+          ...(options.rate !== undefined ? { rate: Number.parseFloat(options.rate) } : {}),
         });
         ui.success(
           `Added ${ui.em(entry.description)} (${ui.bold(ui.formatDuration(entry.durationMs()))})`,
@@ -142,6 +166,10 @@ export function registerEntryCommands(program: Command, container: Container): v
     .option("--from <datetime>")
     .option("--to <datetime>")
     .option("--tags <names>", "comma-separated tag names (replaces existing tags)")
+    .option(
+      "--rate <amount>",
+      "bill this entry at a specific rate instead of the auto-resolved one (e.g. a one-off higher rate)",
+    )
     .action(
       async (
         id: string,
@@ -151,6 +179,7 @@ export function registerEntryCommands(program: Command, container: Container): v
           from?: string;
           to?: string;
           tags?: string;
+          rate?: string;
         },
       ) => {
         const entry = await container.timeEntryService.getById(id);
@@ -164,6 +193,7 @@ export function registerEntryCommands(program: Command, container: Container): v
         if (options.tags !== undefined) {
           updates.tagIds = await resolveTagIds(container, entry.workspaceId, options.tags);
         }
+        if (options.rate !== undefined) updates.rate = Number.parseFloat(options.rate);
         const updated = await container.timeEntryService.edit(id, updates);
         ui.success(`Updated ${ui.em(updated.description)} ${ui.dim(ui.shortId(updated.id))}`);
       },
@@ -200,6 +230,7 @@ export function registerEntryCommands(program: Command, container: Container): v
           ["Start", ui.formatLocalDateTime(entry.startTs)],
           ["Duration", entry.isRunning() ? ui.green(`● ${ui.formatDuration(entry.durationMs())}`) : ui.formatDuration(entry.durationMs())],
           ["Billable", entry.billable ? ui.green("yes") : ui.dim("no")],
+          ["Rate", rateCell(entry, workspace.currency)],
           ["ID", ui.dim(entry.id)],
         ]),
       );
@@ -232,6 +263,7 @@ export function registerEntryCommands(program: Command, container: Container): v
           ["Started", ui.formatLocalDateTime(running.startTs)],
           ["Elapsed", ui.bold(ui.formatDuration(running.durationMs()))],
           ["Billable", running.billable ? ui.green("yes") : ui.dim("no")],
+          ["Rate", rateCell(running, workspace.currency)],
           ["ID", ui.dim(running.id)],
         ]),
       );
@@ -279,7 +311,11 @@ export function registerEntryCommands(program: Command, container: Container): v
         (await container.projectService.list(workspace.id, true)).map((p) => [p.id, p.name]),
       );
       const rows = entries.map((entry) =>
-        entryRow(entry, entry.projectId ? projectNames.get(entry.projectId) : undefined),
+        entryRow(
+          entry,
+          workspace.currency,
+          entry.projectId ? projectNames.get(entry.projectId) : undefined,
+        ),
       );
       const totalMs = entries.reduce((sum, e) => sum + e.durationMs(), 0);
       const billableMs = entries
@@ -294,6 +330,7 @@ export function registerEntryCommands(program: Command, container: Container): v
             ui.bold("Total"),
             ui.bold(ui.formatDuration(totalMs)),
             ui.dim(`${ui.formatHours(totalMs)} · billable ${ui.formatHours(billableMs)}`),
+            "",
             "",
             "",
           ],

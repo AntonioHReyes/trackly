@@ -131,5 +131,6 @@ export function serializeEntry(
     billable: entry.billable,
     tagIds: entry.tagIds,
     tagNames: names.tagNames ?? [],
+    rate: entry.rate,
   };
 }

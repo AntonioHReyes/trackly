@@ -43,9 +43,13 @@ export function registerEntryTools(server: McpServer, container: Container): voi
         project: z.string().optional().describe("Project name"),
         tags: z.array(z.string()).optional().describe("Tag names"),
         billable: z.boolean().optional().default(true),
+        rate: z
+          .number()
+          .optional()
+          .describe("Bill this entry at a specific rate instead of the project/workspace one"),
       },
     },
-    safeHandler(async ({ description, workspace, project, tags, billable }) => {
+    safeHandler(async ({ description, workspace, project, tags, billable, rate }) => {
       const ws = await container.workspaceService.resolveActive(workspace);
       const projectId = project ? await resolveProjectId(container, ws.id, project) : null;
       const tagIds = tags?.length ? await resolveTagIds(container, ws.id, tags.join(",")) : [];
@@ -55,6 +59,7 @@ export function registerEntryTools(server: McpServer, container: Container): voi
         projectId,
         billable,
         tagIds,
+        ...(rate !== undefined ? { rate } : {}),
       });
       return jsonResult(serializeEntry(entry, { projectName: project, tagNames: tags }));
     }),
@@ -112,9 +117,13 @@ export function registerEntryTools(server: McpServer, container: Container): voi
         project: z.string().optional().describe("Project name"),
         tags: z.array(z.string()).optional().describe("Tag names"),
         billable: z.boolean().optional().default(true),
+        rate: z
+          .number()
+          .optional()
+          .describe("Bill this entry at a specific rate instead of the project/workspace one"),
       },
     },
-    safeHandler(async ({ description, from, to, workspace, project, tags, billable }) => {
+    safeHandler(async ({ description, from, to, workspace, project, tags, billable, rate }) => {
       const ws = await container.workspaceService.resolveActive(workspace);
       const projectId = project ? await resolveProjectId(container, ws.id, project) : null;
       const tagIds = tags?.length ? await resolveTagIds(container, ws.id, tags.join(",")) : [];
@@ -126,6 +135,7 @@ export function registerEntryTools(server: McpServer, container: Container): voi
         projectId,
         billable,
         tagIds,
+        ...(rate !== undefined ? { rate } : {}),
       });
       return jsonResult(serializeEntry(entry, { projectName: project, tagNames: tags }));
     }),
@@ -144,9 +154,16 @@ export function registerEntryTools(server: McpServer, container: Container): voi
         from: z.string().optional().describe("New start (ISO datetime)"),
         to: z.string().optional().describe("New end (ISO datetime)"),
         billable: z.boolean().optional(),
+        rate: z
+          .number()
+          .nullable()
+          .optional()
+          .describe(
+            "Manual override for this entry's billed rate (e.g. a one-off higher rate); null marks it unbilled",
+          ),
       },
     },
-    safeHandler(async ({ id, description, project, tags, from, to, billable }) => {
+    safeHandler(async ({ id, description, project, tags, from, to, billable, rate }) => {
       const existing = await container.timeEntryService.getById(id);
       const projectId = project
         ? await resolveProjectId(container, existing.workspaceId, project)
@@ -159,6 +176,7 @@ export function registerEntryTools(server: McpServer, container: Container): voi
         ...(to !== undefined ? { endTs: new Date(to) } : {}),
         ...(billable !== undefined ? { billable } : {}),
         ...(tagIds !== undefined ? { tagIds } : {}),
+        ...(rate !== undefined ? { rate } : {}),
       });
       return jsonResult(serializeEntry(entry, { projectName: project, tagNames: tags }));
     }),
