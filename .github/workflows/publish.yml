@@ -1,5 +1,9 @@
 name: Publish to npm
 
+# Manual fallback only: normal releases are fully handled by release.yml
+# (bump, tag, publish, GitHub release, all in one job) on every push to
+# main. This still runs if a human pushes a `vX.Y.Z` tag by hand, or via
+# workflow_dispatch, e.g. to republish/recover a specific version.
 on:
   push:
     tags:
