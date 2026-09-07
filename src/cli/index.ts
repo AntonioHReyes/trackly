@@ -18,6 +18,7 @@ import { registerConfigCommands } from "./commands/config.js";
 import { registerBackupCommands } from "./commands/backup.js";
 import { registerRestoreCommands } from "./commands/restore.js";
 import { registerMcpCommand } from "./commands/mcp.js";
+import { registerGitHookCommands } from "./commands/gitHook.js";
 
 // Read the version from package.json instead of hardcoding it, so `tck
 // --version` never drifts from what was actually published.
@@ -51,6 +52,7 @@ async function main(): Promise<void> {
   registerBackupCommands(program, container);
   registerRestoreCommands(program, container);
   registerMcpCommand(program, container);
+  registerGitHookCommands(program, container);
 
   try {
     await program.parseAsync(process.argv);

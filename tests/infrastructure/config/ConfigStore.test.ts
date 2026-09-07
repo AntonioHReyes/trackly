@@ -48,4 +48,11 @@ describe("ConfigStore", () => {
     store.setWeekStart("sunday");
     expect(store.read().weekStart).toBe("sunday");
   });
+
+  it("defaults git-hook-stops-timer to false and persists it", () => {
+    const store = newStore();
+    expect(store.read().gitHookStopsTimer).toBe(false);
+    store.setGitHookStopsTimer(true);
+    expect(store.read().gitHookStopsTimer).toBe(true);
+  });
 });

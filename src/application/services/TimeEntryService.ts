@@ -1,4 +1,4 @@
-import { TimeEntry } from "../../domain/entities/TimeEntry.js";
+import { TimeEntry, type GitMetadata } from "../../domain/entities/TimeEntry.js";
 import type {
   TimeEntryFilter,
   TimeEntryRepository,
@@ -89,6 +89,26 @@ export class TimeEntryService {
   async remove(id: string): Promise<void> {
     const entry = await this.getById(id);
     await this.entries.delete(entry.id);
+  }
+
+  /**
+   * Tags the running entry with commit metadata from a git hook (`tck
+   * git-hook attach`), stopping it too when `stop` is set — normally sourced
+   * from the `git-hook-stops-timer` config default.
+   */
+  async attachGit(
+    workspaceId: string,
+    git: GitMetadata,
+    options: { stop?: boolean } = {},
+  ): Promise<TimeEntry> {
+    const running = await this.entries.findRunning(workspaceId);
+    if (!running) {
+      throw new InvalidStateError("No time entry is currently running");
+    }
+    const tagged = running.attachGit(git);
+    const result = options.stop ? tagged.stop() : tagged;
+    await this.entries.save(result);
+    return result;
   }
 
   async status(workspaceId: string): Promise<TimeEntry | null> {

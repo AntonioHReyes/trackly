@@ -16,10 +16,13 @@ export interface ConfigValues {
   weekStart: WeekStart;
   /** Default duration rounding applied to reports and exports. */
   rounding: Rounding;
+  /** Whether `tck git-hook attach` stops the running entry it tags (default: off, tag only). */
+  gitHookStopsTimer: boolean;
 }
 
 const DEFAULT_WEEK_START: WeekStart = "monday";
 const DEFAULT_ROUNDING_MINUTES = 15;
+const DEFAULT_GIT_HOOK_STOPS_TIMER = false;
 
 /** Persists user-configurable settings (`tck config set/get`) as TOML. */
 export class ConfigStore {
@@ -37,6 +40,7 @@ export class ConfigStore {
       dbPath: typeof dbPath === "string" ? dbPath : undefined,
       weekStart: weekStart === "sunday" ? "sunday" : DEFAULT_WEEK_START,
       rounding: ConfigStore.readRounding(raw),
+      gitHookStopsTimer: raw["git-hook-stops-timer"] === true ? true : DEFAULT_GIT_HOOK_STOPS_TIMER,
     };
   }
 
@@ -57,6 +61,10 @@ export class ConfigStore {
     // reach the file, whichever mode happens to be stored right now.
     Rounding.of("nearest", minutes);
     this.toml.update({ "rounding-minutes": minutes });
+  }
+
+  setGitHookStopsTimer(stops: boolean): void {
+    this.toml.update({ "git-hook-stops-timer": stops });
   }
 
   /**

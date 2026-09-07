@@ -46,10 +46,11 @@ describe("CsvReportExporter", () => {
     const content = await readFile(outPath, "utf8");
     const lines = content.trim().split("\n");
     expect(lines[0]).toBe(
-      "id,description,project,tags,start,end,duration_hours,billable,amount,currency,commit",
+      "id,description,project,tags,start,end,duration_hours,duration_hhmm,billable,amount,currency,commit",
     );
     expect(lines[1]).toContain('"Fix, bug"');
     expect(lines[1]).toContain("Website");
     expect(lines[1]).toContain("20.00");
+    expect(lines[1]).toContain("01:00");
   });
 });

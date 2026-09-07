@@ -38,9 +38,9 @@ of the same data — without leaving the shell.
   so Claude Desktop/Claude Code can manage your time tracking directly.
 - **Backup/restore** — a binary `.db` copy plus a diffable SQL dump on
   every backup.
-
-Git-hook integration (`tck git install-hook`, auto-suggesting a time entry
-from your commits) is planned but not yet implemented.
+- **Git-hook linking** — `tck git-hook attach` tags the running entry with
+  the current commit (repo/branch/sha), for wiring into a `post-commit`
+  hook.
 
 ## Install
 
@@ -110,6 +110,37 @@ tck rate set 50                    # workspace default
 tck rate set 90 --project Website  # project override
 ```
 
+### Git-hook linking
+
+Tags the running entry with the current commit's repo, branch, and hash —
+handy for tracing _what got done_ in an entry back to _what shipped_.
+
+```bash
+tck git-hook attach                                  # reads repo/branch/commit from cwd
+tck git-hook attach --repo trackly --commit abc123 --branch main
+```
+
+Install a `post-commit` hook in the current repo so every commit calls it
+automatically:
+
+```bash
+tck git-hook install            # writes .git/hooks/post-commit
+tck git-hook install --force    # overwrite a pre-existing post-commit hook
+tck git-hook status             # not-installed | installed | a different hook is present
+tck git-hook uninstall          # removes the hook, only if trackly installed it
+```
+
+`install`/`uninstall` are per-repo (run them from inside the repo you want
+hooked) and never touch a hook trackly didn't write — `install` refuses to
+clobber a foreign one without `--force`, and `uninstall` refuses to delete
+one. By default the hook only tags the running entry; opt into also
+stopping it:
+
+```bash
+tck config set git-hook-stops-timer true   # a commit now also stops the timer
+tck config set git-hook-stops-timer false  # back to tagging only (default)
+```
+
 ### Date shortcuts
 
 Shared by `list`, `report pdf`, `export csv`, and `invoice pdf`:
@@ -140,6 +171,11 @@ shortcuts above. `report chart` renders the same hours-by-day and
 hours-by-project data as `report pdf`, as ANSI bar charts instead of a
 file — handy for a quick look without opening anything. `--section days
 | projects | both` picks which one to show (default `both`).
+
+`export csv` writes both `duration_hours` (decimal, e.g. `1.5000`, for
+spreadsheet math) and `duration_hhmm` (`01:30`, for reading at a glance) per
+row, plus a `commit` column populated by [git-hook linking](#git-hook-linking)
+when an entry has one.
 
 ### Invoices
 
@@ -191,10 +227,78 @@ tck config set rounding-minutes 6
 
 ```bash
 tck config set week-start sunday
+tck config set git-hook-stops-timer true
 tck config get
 tck backup
 tck restore ~/.config/trackly/backups/trackly-<timestamp>.sql
 ```
+
+## Example workflows
+
+### A day of client work, start to invoice
+
+```bash
+tck workspace switch acme
+tck start "Fix checkout bug" --project Website --tags urgent
+# ...work...
+tck stop
+tck start "Client call" --project Website --no-billable
+# ...call...
+tck stop
+
+tck list --today                      # sanity-check what got logged
+tck report pdf --this-month -o report.pdf
+tck invoice pdf --last-month --number INV-2026-014 \
+  --bill-to "Acme Corp\nAttn: Finance" --due-date 2026-09-15 -o invoice.pdf
+```
+
+Non-billable entries (like the call above) show up in reports but are
+excluded from invoices automatically.
+
+### A coding task, with commits linked automatically
+
+One-time setup per repo:
+
+```bash
+cd ~/code/website
+tck workspace switch acme
+tck git-hook install
+```
+
+Then, day to day:
+
+```bash
+tck start "Add POST /users endpoint" --project Website
+# ...code, then commit as usual...
+git add .
+git commit -m "Add POST /users endpoint"
+# → the hook runs automatically: "Tagged Add POST /users endpoint with commit a1b2c3d"
+git commit -m "Add tests"
+# → re-tags the same entry with the newer commit (only the last one sticks)
+tck stop
+```
+
+`git-hook-stops-timer` (default `false`) decides whether that last commit
+also stops the timer for you, instead of running `tck stop` by hand:
+
+```bash
+tck config set git-hook-stops-timer true
+```
+
+The hook is per-repo — install it in every repo whose commits you want
+linked to entries; the timer and workspace stay the same across all of them.
+
+### Juggling multiple clients in one day
+
+```bash
+tck -w acme start "Standup"
+tck -w acme stop
+tck -w other-client start "Bug triage"
+tck -w other-client stop
+```
+
+`-w/--workspace` overrides the active workspace for a single command, so
+you don't have to `switch` back and forth when bouncing between clients.
 
 ## Storage
 

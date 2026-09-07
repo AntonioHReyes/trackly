@@ -5,7 +5,13 @@ import type { WeekStart } from "../../domain/value-objects/WeekStart.js";
 import { ROUNDING_MODES, type RoundingMode } from "../../domain/value-objects/Rounding.js";
 import * as ui from "../ui/index.js";
 
-const CONFIG_KEYS = ["db-path", "week-start", "rounding", "rounding-minutes"] as const;
+const CONFIG_KEYS = [
+  "db-path",
+  "week-start",
+  "rounding",
+  "rounding-minutes",
+  "git-hook-stops-timer",
+] as const;
 type ConfigKey = (typeof CONFIG_KEYS)[number];
 
 function assertKnownKey(key: string): asserts key is ConfigKey {
@@ -36,6 +42,13 @@ function parseRoundingMinutes(value: string): number {
   return minutes;
 }
 
+function parseBoolean(key: string, value: string): boolean {
+  if (value !== "true" && value !== "false") {
+    throw new ValidationError(`${key} must be "true" or "false", got "${value}"`);
+  }
+  return value === "true";
+}
+
 /** `tck config set/get` (see SPEC.md's Config command). */
 export function registerConfigCommands(program: Command, container: Container): void {
   const config = program.command("config").description("Read/write user configuration");
@@ -60,6 +73,9 @@ export function registerConfigCommands(program: Command, container: Container): 
         case "rounding-minutes":
           container.configStore.setRoundingMinutes(parseRoundingMinutes(value));
           break;
+        case "git-hook-stops-timer":
+          container.configStore.setGitHookStopsTimer(parseBoolean(key, value));
+          break;
       }
       ui.success(`${ui.em(key)} = ${ui.cyan(value)}`);
     });
@@ -74,6 +90,7 @@ export function registerConfigCommands(program: Command, container: Container): 
         "week-start": values.weekStart,
         rounding: values.rounding.mode,
         "rounding-minutes": String(values.rounding.minutes),
+        "git-hook-stops-timer": String(values.gitHookStopsTimer),
       };
       if (key === undefined) {
         ui.heading("Config");

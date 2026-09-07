@@ -80,6 +80,31 @@ describe("TimeEntryService", () => {
     expect((await service.status(workspaceId))?.id).toBe(entry.id);
   });
 
+  it("attachGit() tags the running entry without stopping it by default", async () => {
+    const entry = await service.start({ workspaceId, description: "Coding" });
+    const git = { repo: "trackly", commit: "abc123", branch: "main" };
+    const tagged = await service.attachGit(workspaceId, git);
+    expect(tagged.id).toBe(entry.id);
+    expect(tagged.git).toEqual(git);
+    expect(tagged.isRunning()).toBe(true);
+  });
+
+  it("attachGit() stops the entry when stop: true", async () => {
+    await service.start({ workspaceId, description: "Coding" });
+    const tagged = await service.attachGit(
+      workspaceId,
+      { repo: "trackly", commit: "abc123", branch: "main" },
+      { stop: true },
+    );
+    expect(tagged.isRunning()).toBe(false);
+  });
+
+  it("attachGit() throws when nothing is running", async () => {
+    await expect(
+      service.attachGit(workspaceId, { repo: "trackly", commit: "abc123", branch: "main" }),
+    ).rejects.toThrow(InvalidStateError);
+  });
+
   it("list() delegates to the repository filter", async () => {
     await service.addManual({
       workspaceId,
