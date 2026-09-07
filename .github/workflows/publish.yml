@@ -1,9 +1,13 @@
 name: Publish to npm
 
-# Manual fallback only: normal releases are fully handled by release.yml
-# (bump, tag, publish, GitHub release, all in one job) on every push to
-# main. This still runs if a human pushes a `vX.Y.Z` tag by hand, or via
-# workflow_dispatch, e.g. to republish/recover a specific version.
+# The only place `npm publish` runs — npm's trusted-publisher (OIDC) config
+# is bound to this exact repo + workflow filename, so publishing has to
+# happen here, not in some other workflow. release.yml (bump/commit/tag on
+# every push to main) triggers this via workflow_dispatch once it has
+# pushed a new tag — a push made with the default GITHUB_TOKEN can't
+# trigger this `push: tags:` clause itself, hence the explicit dispatch.
+# The `push: tags:` trigger below is kept for a human pushing a `vX.Y.Z`
+# tag by hand.
 on:
   push:
     tags:
@@ -23,6 +27,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -50,7 +56,7 @@ jobs:
         run: npm publish --provenance --access public
 
       - name: Create GitHub release
-        if: github.ref_type == 'tag'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --generate-notes
+          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+        run: gh release create "$TAG" --title "$TAG" --generate-notes

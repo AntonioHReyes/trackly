@@ -1,10 +1,11 @@
 name: Release
 
-# Bumps package.json, commits "chore: release vX.Y.Z", tags it, publishes to
-# npm, and creates the GitHub release — all in one job, on every push to
-# main. Everything happens here (rather than the tag push triggering
-# publish.yml) because pushes made with the default GITHUB_TOKEN don't
-# trigger other workflows, by GitHub's own loop-prevention design.
+# Bumps package.json, commits "chore: release vX.Y.Z", tags it, and hands
+# off to publish.yml to actually publish. It doesn't publish itself: npm's
+# trusted-publisher (OIDC) config only trusts `npm publish` running from
+# publish.yml, so this dispatches that workflow (via `workflow_dispatch`,
+# which — unlike a plain push — the default GITHUB_TOKEN is allowed to
+# trigger) instead of duplicating the publish step here.
 on:
   push:
     branches: [main]
@@ -13,7 +14,7 @@ on:
 
 permissions:
   contents: write
-  id-token: write
+  actions: write
 
 jobs:
   release:
@@ -34,11 +35,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
-
-      - name: Install latest npm
-        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -55,7 +52,7 @@ jobs:
       # Conventional-commits-ish, matched against the commit header only:
       # "feat:" -> minor, "<type>!:" -> major, a "BREAKING CHANGE:" footer
       # (start of a line, not just the phrase anywhere) -> major, else
-      # patch. Only the first line is checked for the "!:" and "feat:"
+      # patch. Only the header line is checked for the "!:" and "feat:"
       # forms so prose elsewhere in the body (like this comment) can't
       # accidentally match.
       - name: Determine version bump
@@ -83,10 +80,7 @@ jobs:
       - name: Push release commit and tag
         run: git push origin HEAD:main --follow-tags
 
-      - name: Publish to npm
-        run: npm publish --provenance --access public
-
-      - name: Create GitHub release
+      - name: Trigger publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "${{ steps.version.outputs.tag }}" --title "${{ steps.version.outputs.tag }}" --generate-notes
+        run: gh workflow run publish.yml -f version=${{ steps.version.outputs.tag }}

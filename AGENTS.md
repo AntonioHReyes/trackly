@@ -60,27 +60,34 @@ pnpm build            # tsc -> dist/
 
 ## Releasing
 
-Fully automated by `.github/workflows/release.yml`, which runs on every
-push to `main` (except changes only under `.github/workflows/`), in one
-job: reads the triggering commit's *header line* for a
-Conventional-Commits-ish prefix (`feat:` → minor, `<type>!:` header or a
-`BREAKING CHANGE:` footer → major, anything else → patch), bumps
-`package.json` with `npm version`, commits it as `chore: release
-vX.Y.Z`, tags it, pushes both, then publishes to npm with provenance and
-creates the GitHub release — all in the same job, since a push made with
-the default `GITHUB_TOKEN` does not trigger other workflows (GitHub's own
-loop prevention), so the old two-workflow tag-handoff design doesn't work.
-It skips itself on `chore: release` commits to avoid looping.
+Fully automated, across two workflows because npm's trusted-publisher
+(OIDC) config only trusts `npm publish` running from
+`.github/workflows/publish.yml` by name — nothing else is allowed to
+publish, so bumping and publishing can't be the same job:
 
-`.github/workflows/publish.yml` is now a manual-only fallback (a human
-pushing a `vX.Y.Z` tag, or `workflow_dispatch`) to republish/recover a
-specific version — it plays no part in the normal flow.
+1. `.github/workflows/release.yml` runs on every push to `main` (except
+   changes only under `.github/workflows/`). It reads the triggering
+   commit's *header line* for a Conventional-Commits-ish prefix (`feat:` →
+   minor, `<type>!:` header or a `BREAKING CHANGE:` footer → major,
+   anything else → patch), bumps `package.json` with `npm version`,
+   commits it as `chore: release vX.Y.Z`, tags it, and pushes both. It
+   skips itself on `chore: release` commits to avoid looping.
+2. It then runs `gh workflow run publish.yml -f version=vX.Y.Z` — a
+   `workflow_dispatch` call, which (unlike a plain push) the default
+   `GITHUB_TOKEN` is allowed to use to trigger another workflow.
+   `publish.yml` checks out that tag, tests, builds, `npm publish
+   --provenance`s, and creates the GitHub release.
 
-Never bump `version` or tag by hand — every push to `main` releases
-something. Write commit messages with the prefix that matches the intended
-bump, and keep words like "BREAKING CHANGE" out of prose in the body
-unless you mean it as the real footer (line start) — the bump detection
-matches on that.
+`publish.yml`'s own `push: tags: v*.*.*` trigger stays as a fallback for a
+human pushing a tag by hand (e.g. to republish/recover a specific
+version).
+
+Never bump `version` or tag by hand, and never move the `npm publish` step
+out of `publish.yml` — every push to `main` releases something through
+this chain, and only that one file is authorized to publish. Write commit
+messages with the prefix that matches the intended bump, and keep words
+like "BREAKING CHANGE" out of prose in the body unless you mean it as the
+real footer (line start) — the bump detection matches on that.
 
 ## Do not
 
