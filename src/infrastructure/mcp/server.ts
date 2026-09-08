@@ -5,6 +5,7 @@ import { registerProjectTools } from "./tools/projectTools.js";
 import { registerTagTools } from "./tools/tagTools.js";
 import { registerEntryTools } from "./tools/entryTools.js";
 import { registerReportTools } from "./tools/reportTools.js";
+import { registerEarningsTools } from "./tools/earningsTools.js";
 
 /**
  * Builds the MCP server exposed by `tck mcp` — every tool wraps an existing
@@ -20,6 +21,7 @@ export function createMcpServer(container: Container): McpServer {
   registerTagTools(server, container);
   registerEntryTools(server, container);
   registerReportTools(server, container);
+  registerEarningsTools(server, container);
 
   return server;
 }

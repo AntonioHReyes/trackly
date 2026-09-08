@@ -27,6 +27,8 @@ export interface DateRangeSelection {
   range: DateRange | undefined;
   /** `undefined` when no shortcut was used, so callers can fall back to raw dates. */
   label: string | undefined;
+  /** Which shortcut produced this range, so callers can derive its counterpart. */
+  shortcut: DateRangeShortcut | undefined;
 }
 
 /** Adds the shared `--today|--yesterday|...|--from/--to` flags to a command. */
@@ -69,12 +71,17 @@ export function resolveDateRangeSelection(
     return {
       range: resolveDateRangeShortcut(shortcut, weekStart),
       label: describeDateRangeShortcut(shortcut),
+      shortcut,
     };
   }
   if (options.from && options.to) {
-    return { range: DateRange.of(new Date(options.from), new Date(options.to)), label: undefined };
+    return {
+      range: DateRange.of(new Date(options.from), new Date(options.to)),
+      label: undefined,
+      shortcut: undefined,
+    };
   }
-  return { range: undefined, label: undefined };
+  return { range: undefined, label: undefined, shortcut: undefined };
 }
 
 /** Turns parsed CLI flags into a `DateRange`, or `undefined` for "no filter". */

@@ -13,11 +13,12 @@ export function registerProjectTools(server: McpServer, container: Container): v
       inputSchema: {
         workspace: z.string().optional().describe("Workspace slug; defaults to the active workspace"),
         includeArchived: z.boolean().optional().default(false),
+        client: z.string().optional().describe("Only projects belonging to this client"),
       },
     },
-    safeHandler(async ({ workspace, includeArchived }) => {
+    safeHandler(async ({ workspace, includeArchived, client }) => {
       const ws = await container.workspaceService.resolveActive(workspace);
-      const projects = await container.projectService.list(ws.id, includeArchived);
+      const projects = await container.projectService.list(ws.id, includeArchived, client);
       return jsonResult(projects.map(serializeProject));
     }),
   );

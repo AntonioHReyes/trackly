@@ -32,6 +32,45 @@ export function describeDateRangeShortcut(shortcut: DateRangeShortcut): string {
 }
 
 /**
+ * The shortcut a period should be compared against ("this week" vs "last
+ * week"). Only calendar shortcuts have a meaningful counterpart: rolling
+ * windows (`last-7-days`) and already-past periods (`yesterday`) fall back
+ * to `precedingRange`, which just shifts by the same duration.
+ */
+const PREVIOUS_SHORTCUT: Partial<Record<DateRangeShortcut, DateRangeShortcut>> = {
+  today: "yesterday",
+  "this-week": "last-week",
+  "this-month": "last-month",
+  "this-year": "last-year",
+};
+
+export function previousDateRangeShortcut(
+  shortcut: DateRangeShortcut,
+): DateRangeShortcut | undefined {
+  return PREVIOUS_SHORTCUT[shortcut];
+}
+
+/**
+ * The window of the same length immediately before `range` — the generic
+ * "previous period" for custom `--from/--to` and rolling ranges, where no
+ * calendar counterpart exists.
+ */
+export function precedingRange(range: DateRange): DateRange {
+  const duration = range.durationMs();
+  return DateRange.of(new Date(range.start.getTime() - duration), new Date(range.start.getTime()));
+}
+
+/** The last `count` calendar months ending with the one containing `now`, oldest first. */
+export function trailingMonths(count: number, now: Date = new Date()): DateRange[] {
+  const months: DateRange[] = [];
+  for (let offset = count - 1; offset >= 0; offset -= 1) {
+    const start = addMonths(startOfMonth(now), -offset);
+    months.push(DateRange.of(start, addMonths(start, 1)));
+  }
+  return months;
+}
+
+/**
  * Resolves a report/list shortcut (`--today`, `--this-week`, ...) into a
  * concrete `DateRange`, honoring the configurable week start (see SPEC.md's
  * `config set week-start`). Calendar shortcuts snap to natural boundaries

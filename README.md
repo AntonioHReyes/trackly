@@ -26,6 +26,12 @@ of the same data — without leaving the shell.
   you only override where it differs. Each entry freezes the rate it
   resolved to when created, so a later rate change never repriced work
   already tracked.
+- **Clients** — tag a project with `--client` and slice everything by it:
+  one client can own several projects, and `--client` filters reports,
+  exports, invoices, and earnings across all of them at once.
+- **Earnings** — `tck earnings` answers "how much did I make?" for today,
+  this week, this month and this year at a glance, with monthly trend bars
+  and a comparison against the previous period.
 - **Reports & exports** — PDF reports with charts (bar/donut, hand-built
   SVG, zero native deps), flat CSV exports, and ANSI bar charts straight in
   the terminal (`report chart`), all sharing the same date and filter
@@ -83,6 +89,7 @@ tck workspace rm acme
 
 tck project create Website --client "Acme Corp" --rate 75
 tck project list
+tck project list --client "Acme Corp"   # only this client's projects
 tck project edit <id> --name "Website Revamp"
 tck project archive <id>
 tck project rm <id>
@@ -172,7 +179,8 @@ tck config set git-hook-stops-timer false  # back to tagging only (default)
 
 ### Date shortcuts
 
-Shared by `list`, `report pdf`, `export csv`, and `invoice pdf`:
+Shared by `list`, `report pdf`, `report chart`, `export csv`, `invoice pdf`,
+and `earnings`:
 
 ```
 --today --yesterday --this-week --last-week --this-month --last-month
@@ -194,17 +202,88 @@ tck report chart --this-week                      # bar charts, right in the ter
 tck report chart --this-month --section projects  # just the by-project breakdown
 ```
 
-All three accept `--project`, `--tag`, `--billable`/`--non-billable`, and
-rounding flags (`--rounding`, `--rounding-minutes`), on top of the date
-shortcuts above. `report chart` renders the same hours-by-day and
-hours-by-project data as `report pdf`, as ANSI bar charts instead of a
-file — handy for a quick look without opening anything. `--section days
-| projects | both` picks which one to show (default `both`).
+All three accept `--project`, `--client`, `--tag`,
+`--billable`/`--non-billable`, and rounding flags (`--rounding`,
+`--rounding-minutes`), on top of the date shortcuts above. `report chart`
+renders the same hours-by-day and hours-by-project data as `report pdf`, as
+ANSI bar charts instead of a file — handy for a quick look without opening
+anything. `--section days | projects | both` picks which one to show
+(default `both`).
 
 `export csv` writes both `duration_hours` (decimal, e.g. `1.5000`, for
 spreadsheet math) and `duration_hhmm` (`01:30`, for reading at a glance) per
 row, plus a `commit` column populated by [git-hook linking](#git-hook-linking)
 when an entry has one.
+
+### Filtering by client
+
+A workspace can hold several clients, each with several projects. Tag a
+project once with `--client`, and `--client <name>` then filters by all of
+that client's projects at once — no need to remember which ones they own:
+
+```bash
+tck project create "Acme Site" --client "Acme Inc" --rate 100
+tck project create "Acme App"  --client "Acme Inc" --rate 80
+
+tck report chart --client "Acme Inc" --this-month
+tck export csv   --client "Acme Inc" --last-month -o acme.csv
+tck invoice pdf  --client "Acme Inc" --last-month -o acme-invoice.pdf
+tck earnings     --client "Acme Inc" --this-month
+```
+
+Client names match case-insensitively. An unknown client is an error rather
+than an empty result, so a typo can't quietly read as "you earned nothing".
+
+### Earnings
+
+How much the tracked time is actually worth. With no date flag, `tck
+earnings` summarizes the periods you usually care about, plus a six-month
+trend:
+
+```bash
+tck earnings
+```
+
+```
+Earnings acme
+
+ Period           Earned   Hours  Billable
+ ──────────  ───────────  ──────  ────────
+ Today        700.00 USD   7.50h  100%
+ This week    700.00 USD   7.50h  100%
+ This month  1000.00 USD  12.50h  100%
+ This year   2500.00 USD  28.50h  100%
+
+Monthly trend (last 6 months)
+  May 2026  ██████████░░░░░░░░░░░░░░░░░░░░░░   300.00 USD 3.00h
+  Jun 2026  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  —
+  Jul 2026  █████████████░░░░░░░░░░░░░░░░░░░   400.00 USD 5.00h
+  Aug 2026  ██████████████████████████░░░░░░   800.00 USD 8.00h
+  Sep 2026  ████████████████████████████████  1000.00 USD 12.50h
+```
+
+Add any [date shortcut](#date-shortcuts) to drill into one period instead.
+That view compares against the period before it, charts income over time,
+and breaks the total down by project:
+
+```bash
+tck earnings --this-week
+tck earnings --last-month --client "Acme Inc"
+tck earnings --from 2026-01-01 --to 2026-04-01
+```
+
+```
+Earnings · This week acme
+  700.00 USD   7.50h billable of 7.50h tracked
+  ▲ +133% vs previous period (300.00 USD)
+```
+
+Calendar shortcuts compare against their natural counterpart (`--this-month`
+vs last month); rolling and custom ranges against the window of equal length
+right before them. Ranges longer than about two months chart one bar per
+month instead of per day. `--project`, `--client` and the rounding flags all
+apply, and billable hours with no resolvable rate are called out rather than
+silently counted as zero.
 
 ### Invoices
 
@@ -329,6 +408,15 @@ tck -w other-client stop
 `-w/--workspace` overrides the active workspace for a single command, so
 you don't have to `switch` back and forth when bouncing between clients.
 
+Clients that share a workspace don't need separate workspaces at all — tag
+their projects with `--client` and slice by it when it's time to report or
+bill:
+
+```bash
+tck earnings --client "Acme Inc" --this-month
+tck invoice pdf --client "Acme Inc" --last-month -o acme.pdf
+```
+
 ## Storage
 
 The database lives at `~/.config/trackly/trackly.db` by default, overridable
@@ -343,8 +431,23 @@ binary `.db` copy, so a bad sync is recoverable.
 ## MCP server (Claude Desktop / Claude Code)
 
 `tck mcp` runs Trackly as an MCP server over stdio, exposing workspaces,
-projects, tags, time entries, and reports as tools — so an AI client can
-manage your time tracking directly instead of shelling out to `tck`.
+projects, tags, time entries, reports, and earnings as tools — so an AI
+client can manage your time tracking directly instead of shelling out to
+`tck`. Every tool wraps the same application service the CLI uses, so the
+two can't disagree on business rules.
+
+Earnings and reporting tools take the same filters as their CLI
+counterparts, including `client`:
+
+| Tool | Mirrors |
+|---|---|
+| `get_earnings_summary` | `tck earnings` (today / week / month / year + monthly trend) |
+| `get_earnings_for_range` | `tck earnings --this-month` (one period, vs. the previous one) |
+| `get_report_summary` | `tck report chart` |
+| `export_report_pdf` / `export_report_csv` | `tck report pdf` / `tck export csv` |
+
+So you can just ask: *"how much did I bill Acme Inc this month, and how does
+it compare to last month?"*
 
 Add it to Claude Desktop's config
 (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):

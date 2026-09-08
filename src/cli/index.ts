@@ -13,6 +13,7 @@ import { registerEntryCommands } from "./commands/entry.js";
 import { registerReportCommands } from "./commands/report.js";
 import { registerInvoiceCommands } from "./commands/invoice.js";
 import { registerExportCommands } from "./commands/export.js";
+import { registerEarningsCommands } from "./commands/earnings.js";
 import { registerRateCommands } from "./commands/rate.js";
 import { registerConfigCommands } from "./commands/config.js";
 import { registerBackupCommands } from "./commands/backup.js";
@@ -47,6 +48,7 @@ async function main(): Promise<void> {
   registerReportCommands(program, container);
   registerInvoiceCommands(program, container);
   registerExportCommands(program, container);
+  registerEarningsCommands(program, container);
   registerRateCommands(program, container);
   registerConfigCommands(program, container);
   registerBackupCommands(program, container);

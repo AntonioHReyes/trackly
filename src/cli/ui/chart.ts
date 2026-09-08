@@ -1,4 +1,5 @@
 import type { DayHours, ProjectHours } from "../../application/services/ReportService.js";
+import type { EarningsBucket } from "../../application/services/EarningsService.js";
 import { bold, dim, hexColor, truncate, visibleWidth } from "./ansi.js";
 
 /**
@@ -94,6 +95,50 @@ export function renderProjectHoursChart(projects: readonly ProjectHours[]): stri
       return `  ${color("■")} ${name}  ${bar(p.hours, max, width, color)}  ${p.hours.toFixed(2)}h ${dim(share)}`;
     })
     .join("\n");
+}
+
+/**
+ * Horizontal bar chart of money earned per bucket (`tck earnings`). Bars are
+ * scaled to the best period rather than to the total, so a flat month still
+ * shows relief. Keys are either `YYYY-MM-DD` (daily) or `YYYY-MM` (monthly)
+ * and are labelled accordingly.
+ */
+export function renderEarningsChart(buckets: readonly EarningsBucket[]): string {
+  if (buckets.length === 0) return dim("No earnings in this range.");
+  if (buckets.length > MAX_DAY_ROWS) {
+    return dim(
+      `Range too long to chart (${buckets.length} bars, max ${MAX_DAY_ROWS}) — try a narrower range.`,
+    );
+  }
+
+  const width = barWidthFor();
+  const amounts = buckets.map((b) => b.amount.toDecimal());
+  const max = Math.max(...amounts, 0);
+  const color = hexColor(PALETTE[2] as string); // green — this chart is money
+  const labels = buckets.map((b) => formatBucketLabel(b.key));
+  const labelWidth = Math.max(...labels.map((label) => label.length));
+  const currency = buckets[0]?.amount.currency ?? "";
+  const valueWidth = Math.max(...amounts.map((a) => a.toFixed(2).length));
+
+  return buckets
+    .map((bucket, i) => {
+      const label = (labels[i] as string).padEnd(labelWidth + 2);
+      const amount = amounts[i] as number;
+      const value =
+        amount > 0 ? `${amount.toFixed(2).padStart(valueWidth)} ${currency}` : dim("—");
+      const hours = bucket.hours > 0 ? dim(` ${bucket.hours.toFixed(2)}h`) : "";
+      return `  ${dim(label)}${bar(amount, max, width, color)}  ${value}${hours}`;
+    })
+    .join("\n");
+}
+
+/** `2026-09-07` -> `Mon 09-07`; `2026-09` -> `Sep 2026`. */
+function formatBucketLabel(key: string): string {
+  if (key.length === 7) {
+    const date = new Date(`${key}-01T00:00:00`);
+    return `${date.toLocaleDateString(undefined, { month: "short" })} ${key.slice(0, 4)}`;
+  }
+  return formatDayLabel(key);
 }
 
 export function chartHeading(title: string): string {

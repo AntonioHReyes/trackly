@@ -4,13 +4,21 @@ import type { Container } from "../../../cli/container.js";
 import type { TimeEntryFilter } from "../../../domain/repositories/TimeEntryRepository.js";
 import type { ReportData } from "../../../application/services/ReportService.js";
 import { Rounding, ROUNDING_MODES, type RoundingMode } from "../../../domain/value-objects/Rounding.js";
-import { resolveProjectId, resolveTagIds } from "../../../cli/commands/lookups.js";
+import {
+  resolveProjectId,
+  resolveProjectIdsByClient,
+  resolveTagIds,
+} from "../../../cli/commands/lookups.js";
 import { dateRangeShape, jsonResult, resolveRangeInput, safeHandler, serializeMoney } from "../shared.js";
 
 const reportFilterShape = {
   workspace: z.string().optional().describe("Workspace slug; defaults to the active workspace"),
   ...dateRangeShape,
   project: z.string().optional().describe("Filter by project name"),
+  client: z
+    .string()
+    .optional()
+    .describe("Filter by client name — covers every project belonging to that client"),
   tag: z.string().optional().describe("Filter by tag name"),
   billable: z.boolean().optional().describe("Filter to billable (true) or non-billable (false) only"),
   rounding: z.enum(ROUNDING_MODES as [RoundingMode, ...RoundingMode[]]).optional(),
@@ -23,6 +31,7 @@ async function buildReportData(
   input: {
     workspace?: string | undefined;
     project?: string | undefined;
+    client?: string | undefined;
     tag?: string | undefined;
     billable?: boolean | undefined;
     rounding?: RoundingMode | undefined;
@@ -39,6 +48,9 @@ async function buildReportData(
   const filter: TimeEntryFilter = { workspaceId: workspace.id };
   if (range) filter.range = range;
   if (input.project) filter.projectId = await resolveProjectId(container, workspace.id, input.project);
+  if (input.client) {
+    filter.projectIds = await resolveProjectIdsByClient(container, workspace.id, input.client);
+  }
   if (input.tag) {
     const tagId = (await resolveTagIds(container, workspace.id, input.tag))[0];
     if (tagId) filter.tagId = tagId;

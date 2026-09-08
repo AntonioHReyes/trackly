@@ -15,6 +15,7 @@ import { TagService } from "../application/services/TagService.js";
 import { TimeEntryService } from "../application/services/TimeEntryService.js";
 import { ReportService } from "../application/services/ReportService.js";
 import { InvoiceService } from "../application/services/InvoiceService.js";
+import { EarningsService } from "../application/services/EarningsService.js";
 import { PdfReportExporter } from "../infrastructure/reporting/PdfReportExporter.js";
 import { CsvReportExporter } from "../infrastructure/reporting/CsvReportExporter.js";
 import { PdfInvoiceExporter } from "../infrastructure/reporting/PdfInvoiceExporter.js";
@@ -37,6 +38,7 @@ export class Container {
   readonly timeEntryService: TimeEntryService;
   readonly reportService: ReportService;
   readonly invoiceService: InvoiceService;
+  readonly earningsService: EarningsService;
   readonly pdfReportExporter: PdfReportExporter;
   readonly csvReportExporter: CsvReportExporter;
   readonly pdfInvoiceExporter: PdfInvoiceExporter;
@@ -61,6 +63,7 @@ export class Container {
     this.timeEntryService = new TimeEntryService(timeEntries, projects, workspaces);
     this.reportService = new ReportService(timeEntries, projects, tags);
     this.invoiceService = new InvoiceService(this.reportService);
+    this.earningsService = new EarningsService(this.reportService);
     this.pdfReportExporter = new PdfReportExporter();
     this.csvReportExporter = new CsvReportExporter();
     this.pdfInvoiceExporter = new PdfInvoiceExporter();

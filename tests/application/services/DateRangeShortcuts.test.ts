@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   describeDateRangeShortcut,
+  precedingRange,
+  previousDateRangeShortcut,
   resolveDateRangeShortcut,
+  trailingMonths,
 } from "../../../src/application/services/DateRangeShortcuts.js";
+import { DateRange } from "../../../src/domain/value-objects/DateRange.js";
 
 // A fixed Wednesday, chosen so week/month boundaries are unambiguous.
 const WEDNESDAY = new Date(2026, 0, 7, 15, 30); // 2026-01-07 (Wed)
@@ -79,5 +83,40 @@ describe("describeDateRangeShortcut", () => {
   it("gives each shortcut a title for report headers", () => {
     expect(describeDateRangeShortcut("last-month")).toBe("Last month");
     expect(describeDateRangeShortcut("last-7-days")).toBe("Last 7 days");
+  });
+});
+
+describe("previousDateRangeShortcut", () => {
+  it("pairs each calendar shortcut with its counterpart", () => {
+    expect(previousDateRangeShortcut("today")).toBe("yesterday");
+    expect(previousDateRangeShortcut("this-week")).toBe("last-week");
+    expect(previousDateRangeShortcut("this-month")).toBe("last-month");
+    expect(previousDateRangeShortcut("this-year")).toBe("last-year");
+  });
+
+  it("has no counterpart for rolling or already-past windows", () => {
+    expect(previousDateRangeShortcut("last-7-days")).toBeUndefined();
+    expect(previousDateRangeShortcut("yesterday")).toBeUndefined();
+  });
+});
+
+describe("precedingRange", () => {
+  it("returns the window of equal length ending where the range starts", () => {
+    const range = DateRange.of(new Date(2026, 0, 8), new Date(2026, 0, 15));
+    const previous = precedingRange(range);
+    expect(previous.start).toEqual(new Date(2026, 0, 1));
+    expect(previous.end).toEqual(new Date(2026, 0, 8));
+  });
+});
+
+describe("trailingMonths", () => {
+  it("returns the last N calendar months, oldest first, ending with the current one", () => {
+    const months = trailingMonths(3, WEDNESDAY); // 2026-01-07
+    expect(months.map((m) => m.start)).toEqual([
+      new Date(2025, 10, 1),
+      new Date(2025, 11, 1),
+      new Date(2026, 0, 1),
+    ]);
+    expect(months[2]?.end).toEqual(new Date(2026, 1, 1));
   });
 });
