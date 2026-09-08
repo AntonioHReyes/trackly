@@ -42,11 +42,16 @@ export function registerProjectCommands(program: Command, container: Container):
     .command("list")
     .description("List projects in the active (or -w) workspace")
     .option("--archived", "include archived projects")
-    .action(async (options: { archived?: boolean }) => {
+    .option("--client <name>", "only show this client's projects")
+    .action(async (options: { archived?: boolean; client?: string }) => {
       const workspace = await container.workspaceService.resolveActive(
         (program.opts() as WorkspaceOpts).workspace,
       );
-      const projects = await container.projectService.list(workspace.id, options.archived ?? false);
+      const projects = await container.projectService.list(
+        workspace.id,
+        options.archived ?? false,
+        options.client,
+      );
       if (projects.length === 0) {
         ui.empty("No projects yet.", "tck project create <name>");
         return;

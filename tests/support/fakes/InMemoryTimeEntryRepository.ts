@@ -32,6 +32,9 @@ export class InMemoryTimeEntryRepository implements TimeEntryRepository {
       .filter((e) => e.workspaceId === filter.workspaceId)
       .filter((e) => !filter.range || filter.range.contains(e.startTs))
       .filter((e) => !filter.projectId || e.projectId === filter.projectId)
+      .filter(
+        (e) => !filter.projectIds || (e.projectId !== null && filter.projectIds.includes(e.projectId)),
+      )
       .filter((e) => !filter.tagId || e.tagIds.includes(filter.tagId))
       .filter((e) => filter.billable === undefined || e.billable === filter.billable)
       .sort((a, b) => a.startTs.getTime() - b.startTs.getTime());

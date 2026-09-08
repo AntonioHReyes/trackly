@@ -17,8 +17,14 @@ export class ProjectService {
     return project;
   }
 
-  async list(workspaceId: string, includeArchived = false): Promise<Project[]> {
-    return this.projects.findByWorkspace(workspaceId, { includeArchived });
+  async list(
+    workspaceId: string,
+    includeArchived = false,
+    client?: string | null,
+  ): Promise<Project[]> {
+    const projects = await this.projects.findByWorkspace(workspaceId, { includeArchived });
+    if (client === undefined) return projects;
+    return projects.filter((p) => p.client?.toLowerCase() === client?.toLowerCase());
   }
 
   async getById(id: string): Promise<Project> {

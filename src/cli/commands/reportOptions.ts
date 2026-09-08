@@ -6,7 +6,7 @@ import { addDateRangeOptions, resolveDateRangeSelection } from "./dateRangeOptio
 import type { DateRangeCliOptions } from "./dateRangeOptions.js";
 import { addRoundingOptions, resolveRounding } from "./roundingOptions.js";
 import type { RoundingCliOptions } from "./roundingOptions.js";
-import { resolveProjectId, resolveTagIds } from "./lookups.js";
+import { resolveProjectId, resolveProjectIdsByClient, resolveTagIds } from "./lookups.js";
 import { applyPreset, type PresetCliOptions } from "./presetOption.js";
 
 interface WorkspaceOpts {
@@ -18,6 +18,7 @@ export type ReportFilterOptions = DateRangeCliOptions &
   RoundingCliOptions &
   PresetCliOptions & {
     project?: string;
+    client?: string;
     tag?: string;
     billable?: boolean;
     nonBillable?: boolean;
@@ -29,6 +30,7 @@ export type ReportFilterOptions = DateRangeCliOptions &
 export function addReportFilterOptions(command: Command): Command {
   return addRoundingOptions(addDateRangeOptions(command))
     .option("--project <name>", "filter by project name")
+    .option("--client <name>", "filter by client (all of its projects)")
     .option("--tag <name>", "filter by tag name")
     .option("--billable", "only billable entries")
     .option("--non-billable", "only non-billable entries");
@@ -53,6 +55,9 @@ export async function buildReportData(
   const projectId = options.project
     ? await resolveProjectId(container, workspace.id, options.project)
     : undefined;
+  const projectIds = options.client
+    ? await resolveProjectIdsByClient(container, workspace.id, options.client)
+    : undefined;
   const tagId = options.tag
     ? (await resolveTagIds(container, workspace.id, options.tag))[0]
     : undefined;
@@ -61,6 +66,7 @@ export async function buildReportData(
   const filter: TimeEntryFilter = { workspaceId: workspace.id };
   if (range) filter.range = range;
   if (projectId) filter.projectId = projectId;
+  if (projectIds) filter.projectIds = projectIds;
   if (tagId) filter.tagId = tagId;
   if (billable !== undefined) filter.billable = billable;
 

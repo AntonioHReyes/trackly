@@ -230,6 +230,56 @@ describe("ReportService", () => {
     ]);
   });
 
+  it("aggregates a client's several projects when filtered by projectIds", async () => {
+    const secondProject = Project.create({
+      workspaceId: workspace.id,
+      name: "Mobile app",
+      hourlyRate: 30,
+    });
+    await projects.save(secondProject);
+    const otherClientProject = Project.create({ workspaceId: workspace.id, name: "Unrelated" });
+    await projects.save(otherClientProject);
+
+    await entries.save(
+      TimeEntry.addManual({
+        workspaceId: workspace.id,
+        description: "Website work",
+        startTs: new Date("2026-01-01T09:00:00Z"),
+        endTs: new Date("2026-01-01T11:00:00Z"),
+        projectId: project.id,
+      }),
+    );
+    await entries.save(
+      TimeEntry.addManual({
+        workspaceId: workspace.id,
+        description: "Mobile work",
+        startTs: new Date("2026-01-01T12:00:00Z"),
+        endTs: new Date("2026-01-01T13:00:00Z"),
+        projectId: secondProject.id,
+      }),
+    );
+    await entries.save(
+      TimeEntry.addManual({
+        workspaceId: workspace.id,
+        description: "Other client's work",
+        startTs: new Date("2026-01-01T14:00:00Z"),
+        endTs: new Date("2026-01-01T16:00:00Z"),
+        projectId: otherClientProject.id,
+      }),
+    );
+
+    const data = await service.build(workspace, {
+      workspaceId: workspace.id,
+      projectIds: [project.id, secondProject.id],
+    });
+
+    expect(data.entries.map((e) => e.description).sort()).toEqual([
+      "Mobile work",
+      "Website work",
+    ]);
+    expect(data.totalHours).toBeCloseTo(3);
+  });
+
   it("describes the filter used to build the report", async () => {
     const data = await service.build(workspace, { workspaceId: workspace.id, billable: true });
     expect(data.filterLabel).toBe("All time · billable only");

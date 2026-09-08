@@ -15,6 +15,23 @@ export async function resolveProjectId(
   return match.id;
 }
 
+/**
+ * Resolves a (case-insensitive) client name into the ids of every project
+ * tagged with it — a client can span several projects, unlike `--project`.
+ */
+export async function resolveProjectIdsByClient(
+  container: Container,
+  workspaceId: string,
+  client: string,
+): Promise<string[]> {
+  const projects = await container.projectService.list(workspaceId, true);
+  const matches = projects.filter((p) => p.client?.toLowerCase() === client.toLowerCase());
+  if (matches.length === 0) {
+    throw new NotFoundError("Client", client);
+  }
+  return matches.map((p) => p.id);
+}
+
 /** Resolves a comma-separated list of tag names into tag ids. */
 export async function resolveTagIds(
   container: Container,

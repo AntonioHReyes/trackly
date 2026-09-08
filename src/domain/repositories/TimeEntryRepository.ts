@@ -9,6 +9,8 @@ export interface TimeEntryFilter {
   workspaceId: string;
   range?: DateRange;
   projectId?: string;
+  /** Matches entries whose project is any of these ids — powers `--client`, since one client can span several projects. */
+  projectIds?: string[];
   tagId?: string;
   billable?: boolean;
 }

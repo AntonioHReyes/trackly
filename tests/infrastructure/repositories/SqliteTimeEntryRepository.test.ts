@@ -165,6 +165,44 @@ describe("SqliteTimeEntryRepository", () => {
     expect(billableOnly.map((e) => e.description)).toEqual(["Matching"]);
   });
 
+  it("filters by a set of project ids, powering client filtering", async () => {
+    const otherProject = Project.create({ workspaceId, name: "Mobile app" });
+    await new SqliteProjectRepository(connection.db).save(otherProject);
+
+    const first = TimeEntry.addManual({
+      workspaceId,
+      description: "Website work",
+      startTs: new Date("2026-01-01T09:00:00Z"),
+      endTs: new Date("2026-01-01T10:00:00Z"),
+      projectId,
+    });
+    const second = TimeEntry.addManual({
+      workspaceId,
+      description: "Mobile work",
+      startTs: new Date("2026-01-01T11:00:00Z"),
+      endTs: new Date("2026-01-01T12:00:00Z"),
+      projectId: otherProject.id,
+    });
+    const unrelated = TimeEntry.addManual({
+      workspaceId,
+      description: "No project",
+      startTs: new Date("2026-01-01T13:00:00Z"),
+      endTs: new Date("2026-01-01T14:00:00Z"),
+    });
+    await repo.save(first);
+    await repo.save(second);
+    await repo.save(unrelated);
+
+    const results = await repo.findByFilter({
+      workspaceId,
+      projectIds: [projectId, otherProject.id],
+    });
+    expect(results.map((e) => e.description).sort()).toEqual(["Mobile work", "Website work"]);
+
+    const noMatches = await repo.findByFilter({ workspaceId, projectIds: [] });
+    expect(noMatches).toHaveLength(0);
+  });
+
   it("deletes an entry and its tag associations", async () => {
     const entry = TimeEntry.start({ workspaceId, description: "Coding", tagIds: [tagId] });
     await repo.save(entry);

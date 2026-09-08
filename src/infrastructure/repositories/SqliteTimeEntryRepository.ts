@@ -161,6 +161,19 @@ export class SqliteTimeEntryRepository implements TimeEntryRepository {
       clauses.push("te.project_id = @projectId");
       params.projectId = filter.projectId;
     }
+    if (filter.projectIds) {
+      if (filter.projectIds.length === 0) {
+        // No project matched the filter upstream (e.g. an unknown client) —
+        // short-circuit to zero rows instead of an empty `IN ()`.
+        clauses.push("1 = 0");
+      } else {
+        const placeholders = filter.projectIds.map((_, i) => `@projectIds${i}`).join(", ");
+        filter.projectIds.forEach((id, i) => {
+          params[`projectIds${i}`] = id;
+        });
+        clauses.push(`te.project_id IN (${placeholders})`);
+      }
+    }
     if (filter.tagId) {
       clauses.push("tet.tag_id = @tagId");
       params.tagId = filter.tagId;

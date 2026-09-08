@@ -36,6 +36,24 @@ describe("ProjectService", () => {
     expect(updated.hourlyRate).toBe(60);
   });
 
+  it("filters by client, case-insensitively", async () => {
+    const acme1 = await service.create({ workspaceId, name: "Acme site", client: "Acme Inc" });
+    const acme2 = await service.create({ workspaceId, name: "Acme app", client: "Acme Inc" });
+    await service.create({ workspaceId, name: "Beta site", client: "Beta Corp" });
+    await service.create({ workspaceId, name: "No client" });
+
+    const acmeProjects = await service.list(workspaceId, false, "acme inc");
+    expect(acmeProjects.map((p) => p.id).sort()).toEqual([acme1.id, acme2.id].sort());
+  });
+
+  it("matches projects with no client when filtering by null", async () => {
+    const noClient = await service.create({ workspaceId, name: "No client" });
+    await service.create({ workspaceId, name: "Has client", client: "Acme Inc" });
+
+    const result = await service.list(workspaceId, false, null);
+    expect(result.map((p) => p.id)).toEqual([noClient.id]);
+  });
+
   it("removes a project", async () => {
     const project = await service.create({ workspaceId, name: "Website" });
     await service.remove(project.id);

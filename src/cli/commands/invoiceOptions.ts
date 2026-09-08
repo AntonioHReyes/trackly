@@ -8,7 +8,7 @@ import { addDateRangeOptions, resolveDateRangeSelection } from "./dateRangeOptio
 import type { DateRangeCliOptions } from "./dateRangeOptions.js";
 import { addRoundingOptions, resolveRounding } from "./roundingOptions.js";
 import type { RoundingCliOptions } from "./roundingOptions.js";
-import { resolveProjectId, resolveTagIds } from "./lookups.js";
+import { resolveProjectId, resolveProjectIdsByClient, resolveTagIds } from "./lookups.js";
 import { addPresetOption, applyPreset, type PresetCliOptions } from "./presetOption.js";
 
 interface WorkspaceOpts {
@@ -20,6 +20,7 @@ export type InvoiceCliOptions = DateRangeCliOptions &
   RoundingCliOptions &
   PresetCliOptions & {
     project?: string;
+    client?: string;
     tag?: string;
     /** Omit to auto-generate from `tck invoice config set --number-template ...`. */
     number?: string;
@@ -38,6 +39,7 @@ export function addInvoiceOptions(command: Command): Command {
       "invoice number/identifier, e.g. INV-2026-001 (default: auto from invoice config numbering)",
     )
     .option("--project <name>", "only include this project's entries")
+    .option("--client <name>", "only include this client's projects")
     .option("--tag <name>", "only include entries with this tag")
     .option("--bill-to <text>", "recipient block, newline-separated (default: invoice config bill-to)")
     .option("--issue-date <date>", "invoice issue date (ISO), defaults to today")
@@ -64,6 +66,9 @@ export async function buildInvoiceData(
   const projectId = options.project
     ? await resolveProjectId(container, workspace.id, options.project)
     : undefined;
+  const projectIds = options.client
+    ? await resolveProjectIdsByClient(container, workspace.id, options.client)
+    : undefined;
   const tagId = options.tag
     ? (await resolveTagIds(container, workspace.id, options.tag))[0]
     : undefined;
@@ -71,6 +76,7 @@ export async function buildInvoiceData(
   const filter: TimeEntryFilter = { workspaceId: workspace.id };
   if (range) filter.range = range;
   if (projectId) filter.projectId = projectId;
+  if (projectIds) filter.projectIds = projectIds;
   if (tagId) filter.tagId = tagId;
 
   // Explicit flags win over the saved invoice defaults, the same way they
