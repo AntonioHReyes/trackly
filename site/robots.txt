@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://antoniohreyes.github.io/trackly/sitemap.xml

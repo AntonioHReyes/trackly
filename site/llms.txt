@@ -1,0 +1,38 @@
+# trackly (tck)
+
+> A local-first, Toggl-style time-tracking CLI for freelancers and
+> contractors. No account, no browser, no subscription: a single SQLite
+> database plus a command-line tool.
+
+## What it does
+
+- `tck start` / `tck stop`: run a timer, or `tck add` a completed entry
+  with an explicit time range.
+- Workspaces isolate projects, tags, and entries per client so hours never
+  mix across clients.
+- Hourly rates resolve project -> workspace and freeze on each entry, so a
+  later rate change never repriced past work.
+- `--client` filters reports, exports, invoices, and earnings across every
+  project that client owns.
+- `tck report pdf`, `tck export csv`, and `tck report chart` (ANSI, in the
+  terminal) share the same date/filter flags.
+- `tck invoice pdf` generates PDF invoices priced from billable time, with
+  tax and an auto-incrementing number template.
+- `tck mcp` starts a Model Context Protocol server, exposing the same
+  functionality as MCP tools so an AI assistant (Claude Desktop, Claude
+  Code) can manage time tracking directly.
+
+## Install
+
+    npm install -g @tonyakitori/trackly
+
+Requires Node.js >= 20. Binary name after install: `tck`.
+
+## Links
+
+- Homepage: https://antoniohreyes.github.io/trackly/
+- Repository: https://github.com/AntonioHReyes/trackly
+- npm package: https://www.npmjs.com/package/@tonyakitori/trackly
+- Full command reference: https://github.com/AntonioHReyes/trackly#readme
+- License: MIT
+- Author: Antonio Huerta Reyes
