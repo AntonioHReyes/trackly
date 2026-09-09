@@ -1,6 +1,6 @@
 {
   "name": "@tonyakitori/trackly",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Time-tracking CLI with workspaces, projects, tags, rates, PDF/CSV reports, PDF invoices, and an MCP server.",
   "type": "module",
   "license": "MIT",
