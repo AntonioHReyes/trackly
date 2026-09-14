@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>trackly docs — every tck command, flag and FAQ</title>
+<meta name="description" content="Full command reference for tck, the local-first time-tracking CLI: timers, projects, clients, rates, reports, invoices, MCP server — plus answers to the questions people ask before installing." />
+<meta name="keywords" content="tck commands, trackly documentation, time tracking cli manual, tck cli reference, toggl alternative cli, terminal time tracker faq" />
+<link rel="canonical" href="https://antoniohreyes.github.io/trackly/docs/" />
+<meta name="robots" content="index, follow" />
+<meta name="author" content="Antonio Huerta Reyes" />
+
+<!-- Open Graph -->
+<meta property="og:type" content="article" />
+<meta property="og:title" content="trackly docs — every tck command, flag and FAQ" />
+<meta property="og:description" content="The complete tck command reference, generated from the CLI itself, plus a FAQ about local-first time tracking." />
+<meta property="og:url" content="https://antoniohreyes.github.io/trackly/docs/" />
+<meta property="og:image" content="https://antoniohreyes.github.io/trackly/og-image.svg" />
+<meta property="og:site_name" content="trackly" />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="trackly docs — every tck command, flag and FAQ" />
+<meta name="twitter:description" content="The complete tck command reference, generated from the CLI itself, plus a FAQ about local-first time tracking." />
+<meta name="twitter:image" content="https://antoniohreyes.github.io/trackly/og-image.svg" />
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230d1117%22/><text x=%2250%22 y=%2268%22 font-size=%2258%22 text-anchor=%22middle%22 fill=%22%2358f2a0%22 font-family=%22monospace%22>&gt;_</text></svg>" />
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "trackly",
+  "alternateName": "tck",
+  "description": "A local-first, Toggl-style time-tracking CLI with workspaces, projects, rates, PDF/CSV reports, PDF invoices, and a built-in MCP server for AI assistants.",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "macOS, Linux, Windows",
+  "softwareVersion": "0.5.0",
+  "url": "https://antoniohreyes.github.io/trackly/docs/",
+  "downloadUrl": "https://www.npmjs.com/package/@tonyakitori/trackly",
+  "codeRepository": "https://github.com/AntonioHReyes/trackly",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is trackly?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "trackly is a time-tracking CLI installed as tck. It gives you start/stop timers, projects and clients, hourly rates, PDF/CSV reports and PDF invoices — all from the terminal, backed by one local SQLite file."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is trackly a Toggl alternative for the terminal?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "That's the idea. It borrows Toggl's model — workspaces, projects, tags, billable hours — but drops the SaaS part: no account, no browser tab, no subscription, and your data is a file you own.\n\nWhat it doesn't do is team features. There's no shared workspace, no seats, no approvals; it's built for one person tracking their own hours."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does trackly work offline?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Always. There is no server and no network call in normal use — every command reads and writes a local SQLite database. The only thing that needs the internet is installing it from npm."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Where is my data stored?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "In ~/.config/trackly/trackly.db, with settings alongside it in config.toml. Set the TRACKLY_CONFIG_DIR environment variable to point the whole thing somewhere else — handy for keeping a separate profile, or for trying commands without touching your real hours."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I sync my time entries between two computers?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "You can point the database at a synced folder (tck config set db-path ~/Dropbox/trackly.db). trackly deliberately uses SQLite's DELETE journal mode instead of WAL so there are no side files for a sync client to mangle.\n\nOne caveat worth respecting: don't run commands on two machines at once against the same synced file. There's no conflict resolution — last write wins, like any file in a synced folder."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I export my hours to PDF or CSV?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "tck report pdf --this-month -o report.pdf for a PDF with charts, tck export csv --last-month -o hours.csv for a flat spreadsheet-ready file. Both take the same date shortcuts and filters, so whatever you can see on screen you can export.\n\nThere's also tck report chart, which draws the same data as bar charts right in the terminal when you just want a look."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I invoice a client from my tracked time?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes — tck invoice pdf --client \"Acme Corp\" --last-month -o invoice.pdf prices every billable hour at its own rate, applies tax, and numbers the invoice from a template you configure once with tck invoice config set. Non-billable entries are always excluded."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What happens to past entries when I raise my hourly rate?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Nothing — and that's deliberate. Every entry freezes the rate it resolved to (project rate, falling back to the workspace default) the moment it's created, so tck rate set only affects work tracked from then on. You'll never accidentally re-bill last quarter at this quarter's price."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I track time for several clients?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Create one workspace per client with tck workspace create, and switch between them with tck workspace switch. Projects, tags and entries never leak across workspaces.\n\nIf one client owns several projects, tag the projects with --client instead and use --client on reports, exports, invoices and earnings to slice across all of them at once."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I find an entry when I only half-remember what I wrote?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Use --search: tck list --search \"checkout bug\" matches any description containing every word you gave, in any order. It ignores case and accents, so sesion finds \"sesión\".\n\nIt combines with every other filter and works on tck list, reports, exports and invoices."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can an AI assistant like Claude manage my time tracking?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "That's what tck mcp is for: it starts a Model Context Protocol server exposing the same operations as MCP tools, so Claude Desktop or Claude Code can start timers, log entries and pull reports on your behalf. The data still lives only on your machine."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does trackly run on Windows?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "It runs anywhere Node.js 20+ runs — macOS, Linux and Windows. Installation is the same npm install -g @tonyakitori/trackly everywhere, and there's nothing to compile: even the charts in the PDFs are hand-built SVG rather than a native rendering library."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I back up or move my data?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "tck backup -o ./backups writes two things at once: a byte-for-byte copy of the database and a plain-text SQL dump. The dump is diffable and survives a corrupted SQLite file, which a binary copy alone would not. tck restore reads either one back."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is trackly free and open source?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, MIT licensed. The source is on GitHub and the package on npm."
+      }
+    }
+  ]
+}
+</script>
+
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-alt: #11161d;
+    --border: #22282f;
+    --fg: #e6edf3;
+    --fg-dim: #8b949e;
+    --accent: #58f2a0;
+    --accent-dim: #2f7d5c;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, pre, .mono { font-family: var(--mono); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+
+  header.top {
+    padding: 56px 0 32px;
+    border-bottom: 1px solid var(--border);
+    background:
+      radial-gradient(600px 300px at 20% -10%, rgba(88,242,160,.08), transparent),
+      var(--bg);
+  }
+  .crumb { font-family: var(--mono); font-size: 13px; color: var(--fg-dim); margin-bottom: 18px; }
+  h1 { font-size: clamp(28px, 4vw, 40px); margin: 0 0 12px; letter-spacing: -0.02em; }
+  h1 .cmd { color: var(--accent); font-family: var(--mono); }
+  .lede { font-size: 18px; color: var(--fg-dim); max-width: 640px; margin: 0; }
+  .version { font-family: var(--mono); font-size: 13px; color: var(--fg-dim); margin-top: 14px; }
+
+  section { padding: 48px 0; border-bottom: 1px solid var(--border); }
+  section:last-of-type { border-bottom: none; }
+  h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--accent);
+    margin: 0 0 24px;
+  }
+
+  pre.usage, pre.install {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 0 0 16px;
+    overflow-x: auto;
+    font-size: 13.5px;
+    color: #d5dbe2;
+  }
+
+  ul.toc {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 8px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 6px 20px;
+    font-family: var(--mono);
+    font-size: 13.5px;
+  }
+
+  .cmd-block { padding: 24px 0; border-top: 1px solid var(--border); }
+  .cmd-block h3 { font-family: var(--mono); font-size: 17px; margin: 0 0 6px; }
+  .cmd-block h3 a.self { color: var(--fg); }
+  .cmd-block .desc { margin: 0 0 14px; color: var(--fg-dim); }
+
+  table.opts { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.opts th {
+    text-align: left;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--fg-dim);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 12px 6px 0;
+  }
+  table.opts td { padding: 8px 12px 8px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.opts td:first-child { white-space: nowrap; color: var(--accent); }
+  table.opts code { font-size: 13px; }
+
+  .faq-item { padding: 20px 0; border-top: 1px solid var(--border); }
+  .faq-item h3 { font-size: 17px; margin: 0 0 8px; }
+  .faq-item p { margin: 0 0 10px; color: var(--fg-dim); }
+  .faq-item p:last-child { margin-bottom: 0; }
+
+  footer {
+    padding: 32px 0 64px;
+    color: var(--fg-dim);
+    font-size: 13px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  footer a { color: var(--fg-dim); }
+  footer a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="crumb"><a href="../">trackly</a> / docs</p>
+    <h1>Every <span class="cmd">tck</span> command, in one page</h1>
+    <p class="lede">
+      The reference below is generated from the CLI itself, so it lists exactly
+      the commands and flags your installed <code>tck</code> accepts — nothing
+      invented, nothing forgotten.
+    </p>
+    <p class="version">Generated for v0.5.0 · <a href="https://github.com/AntonioHReyes/trackly">source on GitHub</a></p>
+  </div>
+</header>
+
+<section id="install">
+  <div class="wrap">
+    <h2>Install</h2>
+    <pre class="install">npm install -g @tonyakitori/trackly
+tck --version</pre>
+    <p class="lede">Requires Node.js 20 or newer. The binary is called <code>tck</code>.</p>
+  </div>
+</section>
+
+<section id="global-options">
+  <div class="wrap">
+    <h2>Global options</h2>
+    <p class="lede">Accepted by every command.</p>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>-V, --version</code></td><td>output the version number</td></tr>
+          <tr><td><code>-w, --workspace &lt;slug&gt;</code></td><td>override the active workspace for this command</td></tr>
+          </tbody>
+        </table>
+  </div>
+</section>
+
+<section id="commands">
+  <div class="wrap">
+    <h2>Command reference</h2>
+    <ul class="toc">
+        <li><a href="#tck-workspace">tck workspace</a></li>
+        <li><a href="#tck-workspace-create">tck workspace create</a></li>
+        <li><a href="#tck-workspace-list">tck workspace list</a></li>
+        <li><a href="#tck-workspace-set-currency">tck workspace set-currency</a></li>
+        <li><a href="#tck-workspace-switch">tck workspace switch</a></li>
+        <li><a href="#tck-workspace-rm">tck workspace rm</a></li>
+        <li><a href="#tck-project">tck project</a></li>
+        <li><a href="#tck-project-create">tck project create</a></li>
+        <li><a href="#tck-project-list">tck project list</a></li>
+        <li><a href="#tck-project-edit">tck project edit</a></li>
+        <li><a href="#tck-project-archive">tck project archive</a></li>
+        <li><a href="#tck-project-rm">tck project rm</a></li>
+        <li><a href="#tck-tag">tck tag</a></li>
+        <li><a href="#tck-tag-create">tck tag create</a></li>
+        <li><a href="#tck-tag-list">tck tag list</a></li>
+        <li><a href="#tck-tag-rm">tck tag rm</a></li>
+        <li><a href="#tck-start">tck start</a></li>
+        <li><a href="#tck-stop">tck stop</a></li>
+        <li><a href="#tck-add">tck add</a></li>
+        <li><a href="#tck-edit">tck edit</a></li>
+        <li><a href="#tck-rm">tck rm</a></li>
+        <li><a href="#tck-show">tck show</a></li>
+        <li><a href="#tck-status">tck status</a></li>
+        <li><a href="#tck-list">tck list</a></li>
+        <li><a href="#tck-report">tck report</a></li>
+        <li><a href="#tck-report-pdf">tck report pdf</a></li>
+        <li><a href="#tck-report-chart">tck report chart</a></li>
+        <li><a href="#tck-report-preset">tck report preset</a></li>
+        <li><a href="#tck-report-preset-save">tck report preset save</a></li>
+        <li><a href="#tck-report-preset-list">tck report preset list</a></li>
+        <li><a href="#tck-report-preset-rm">tck report preset rm</a></li>
+        <li><a href="#tck-invoice">tck invoice</a></li>
+        <li><a href="#tck-invoice-pdf">tck invoice pdf</a></li>
+        <li><a href="#tck-invoice-config">tck invoice config</a></li>
+        <li><a href="#tck-invoice-config-set">tck invoice config set</a></li>
+        <li><a href="#tck-invoice-config-get">tck invoice config get</a></li>
+        <li><a href="#tck-export">tck export</a></li>
+        <li><a href="#tck-export-csv">tck export csv</a></li>
+        <li><a href="#tck-earnings">tck earnings</a></li>
+        <li><a href="#tck-rate">tck rate</a></li>
+        <li><a href="#tck-rate-set">tck rate set</a></li>
+        <li><a href="#tck-config">tck config</a></li>
+        <li><a href="#tck-config-set">tck config set</a></li>
+        <li><a href="#tck-config-get">tck config get</a></li>
+        <li><a href="#tck-backup">tck backup</a></li>
+        <li><a href="#tck-restore">tck restore</a></li>
+        <li><a href="#tck-mcp">tck mcp</a></li>
+        <li><a href="#tck-git-hook">tck git-hook</a></li>
+        <li><a href="#tck-git-hook-attach">tck git-hook attach</a></li>
+        <li><a href="#tck-git-hook-install">tck git-hook install</a></li>
+        <li><a href="#tck-git-hook-uninstall">tck git-hook uninstall</a></li>
+        <li><a href="#tck-git-hook-status">tck git-hook status</a></li>
+    </ul>
+      <article class="cmd-block" id="tck-workspace">
+        <h3><a class="self" href="#tck-workspace">tck workspace</a></h3>
+        <p class="desc">Manage workspaces (clients/contexts)</p>
+        <pre class="usage">tck workspace</pre>
+      </article>
+      <article class="cmd-block" id="tck-workspace-create">
+        <h3><a class="self" href="#tck-workspace-create">tck workspace create</a></h3>
+        <p class="desc">Create a new workspace</p>
+        <pre class="usage">tck workspace create &lt;slug&gt; &lt;name&gt; [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--currency &lt;code&gt;</code></td><td>ISO currency code</td></tr>
+          <tr><td><code>--rate &lt;amount&gt;</code></td><td>default hourly rate</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-workspace-list">
+        <h3><a class="self" href="#tck-workspace-list">tck workspace list</a></h3>
+        <p class="desc">List all workspaces</p>
+        <pre class="usage">tck workspace list</pre>
+      </article>
+      <article class="cmd-block" id="tck-workspace-set-currency">
+        <h3><a class="self" href="#tck-workspace-set-currency">tck workspace set-currency</a></h3>
+        <p class="desc">Change a workspace's currency</p>
+        <pre class="usage">tck workspace set-currency &lt;slug&gt; &lt;code&gt;</pre>
+      </article>
+      <article class="cmd-block" id="tck-workspace-switch">
+        <h3><a class="self" href="#tck-workspace-switch">tck workspace switch</a></h3>
+        <p class="desc">Set the active workspace</p>
+        <pre class="usage">tck workspace switch &lt;slug&gt;</pre>
+      </article>
+      <article class="cmd-block" id="tck-workspace-rm">
+        <h3><a class="self" href="#tck-workspace-rm">tck workspace rm</a></h3>
+        <p class="desc">Delete a workspace and everything in it</p>
+        <pre class="usage">tck workspace rm &lt;slug&gt;</pre>
+      </article>
+      <article class="cmd-block" id="tck-project">
+        <h3><a class="self" href="#tck-project">tck project</a></h3>
+        <p class="desc">Manage projects within a workspace</p>
+        <pre class="usage">tck project</pre>
+      </article>
+      <article class="cmd-block" id="tck-project-create">
+        <h3><a class="self" href="#tck-project-create">tck project create</a></h3>
+        <p class="desc">Create a project in the active (or -w) workspace</p>
+        <pre class="usage">tck project create &lt;name&gt; [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--client &lt;name&gt;</code></td><td>client name</td></tr>
+          <tr><td><code>--color &lt;hex&gt;</code></td><td>display color</td></tr>
+          <tr><td><code>--rate &lt;amount&gt;</code></td><td>hourly rate override for this project</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-project-list">
+        <h3><a class="self" href="#tck-project-list">tck project list</a></h3>
+        <p class="desc">List projects in the active (or -w) workspace</p>
+        <pre class="usage">tck project list [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--archived</code></td><td>include archived projects</td></tr>
+          <tr><td><code>--client &lt;name&gt;</code></td><td>only show this client's projects</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-project-edit">
+        <h3><a class="self" href="#tck-project-edit">tck project edit</a></h3>
+        <p class="desc">Edit a project</p>
+        <pre class="usage">tck project edit &lt;id&gt; [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--name &lt;name&gt;</code></td><td></td></tr>
+          <tr><td><code>--client &lt;name&gt;</code></td><td></td></tr>
+          <tr><td><code>--color &lt;hex&gt;</code></td><td></td></tr>
+          <tr><td><code>--rate &lt;amount&gt;</code></td><td>hourly rate override</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-project-archive">
+        <h3><a class="self" href="#tck-project-archive">tck project archive</a></h3>
+        <p class="desc">Archive a project</p>
+        <pre class="usage">tck project archive &lt;id&gt;</pre>
+      </article>
+      <article class="cmd-block" id="tck-project-rm">
+        <h3><a class="self" href="#tck-project-rm">tck project rm</a></h3>
+        <p class="desc">Delete a project</p>
+        <pre class="usage">tck project rm &lt;id&gt;</pre>
+      </article>
+      <article class="cmd-block" id="tck-tag">
+        <h3><a class="self" href="#tck-tag">tck tag</a></h3>
+        <p class="desc">Manage tags within a workspace</p>
+        <pre class="usage">tck tag</pre>
+      </article>
+      <article class="cmd-block" id="tck-tag-create">
+        <h3><a class="self" href="#tck-tag-create">tck tag create</a></h3>
+        <p class="desc">Create a tag in the active (or -w) workspace</p>
+        <pre class="usage">tck tag create &lt;name&gt;</pre>
+      </article>
+      <article class="cmd-block" id="tck-tag-list">
+        <h3><a class="self" href="#tck-tag-list">tck tag list</a></h3>
+        <p class="desc">List tags in the active (or -w) workspace</p>
+        <pre class="usage">tck tag list</pre>
+      </article>
+      <article class="cmd-block" id="tck-tag-rm">
+        <h3><a class="self" href="#tck-tag-rm">tck tag rm</a></h3>
+        <p class="desc">Delete a tag</p>
+        <pre class="usage">tck tag rm &lt;id&gt;</pre>
+      </article>
+      <article class="cmd-block" id="tck-start">
+        <h3><a class="self" href="#tck-start">tck start</a></h3>
+        <p class="desc">Start a new time entry (auto-stops any entry already running)</p>
+        <pre class="usage">tck start &lt;description&gt; [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--project &lt;name&gt;</code></td><td>project name</td></tr>
+          <tr><td><code>--tags &lt;names&gt;</code></td><td>comma-separated tag names</td></tr>
+          <tr><td><code>--no-billable</code></td><td>mark as non-billable</td></tr>
+          <tr><td><code>--rate &lt;amount&gt;</code></td><td>bill this entry at a specific rate instead of the project/workspace one</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-stop">
+        <h3><a class="self" href="#tck-stop">tck stop</a></h3>
+        <p class="desc">Stop the currently running time entry</p>
+        <pre class="usage">tck stop</pre>
+      </article>
+      <article class="cmd-block" id="tck-add">
+        <h3><a class="self" href="#tck-add">tck add</a></h3>
+        <p class="desc">Add a completed time entry</p>
+        <pre class="usage">tck add &lt;description&gt; [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--from &lt;datetime&gt;</code></td><td>start (ISO datetime)</td></tr>
+          <tr><td><code>--to &lt;datetime&gt;</code></td><td>end (ISO datetime)</td></tr>
+          <tr><td><code>--project &lt;name&gt;</code></td><td>project name</td></tr>
+          <tr><td><code>--tags &lt;names&gt;</code></td><td>comma-separated tag names</td></tr>
+          <tr><td><code>--no-billable</code></td><td>mark as non-billable</td></tr>
+          <tr><td><code>--rate &lt;amount&gt;</code></td><td>bill this entry at a specific rate instead of the project/workspace one</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-edit">
+        <h3><a class="self" href="#tck-edit">tck edit</a></h3>
+        <p class="desc">Edit a time entry (id may be a unique prefix)</p>
+        <pre class="usage">tck edit &lt;id&gt; [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--description &lt;text&gt;</code></td><td></td></tr>
+          <tr><td><code>--project &lt;name&gt;</code></td><td></td></tr>
+          <tr><td><code>--from &lt;datetime&gt;</code></td><td></td></tr>
+          <tr><td><code>--to &lt;datetime&gt;</code></td><td></td></tr>
+          <tr><td><code>--tags &lt;names&gt;</code></td><td>comma-separated tag names (replaces existing tags)</td></tr>
+          <tr><td><code>--rate &lt;amount&gt;</code></td><td>bill this entry at a specific rate instead of the auto-resolved one (e.g. a one-off higher rate)</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-rm">
+        <h3><a class="self" href="#tck-rm">tck rm</a></h3>
+        <p class="desc">Delete a time entry (id may be a unique prefix)</p>
+        <pre class="usage">tck rm &lt;id&gt;</pre>
+      </article>
+      <article class="cmd-block" id="tck-show">
+        <h3><a class="self" href="#tck-show">tck show</a></h3>
+        <p class="desc">Show one entry in full (id may be a unique prefix) — no description truncation</p>
+        <pre class="usage">tck show &lt;id&gt;</pre>
+      </article>
+      <article class="cmd-block" id="tck-status">
+        <h3><a class="self" href="#tck-status">tck status</a></h3>
+        <p class="desc">Show the currently running time entry, if any</p>
+        <pre class="usage">tck status</pre>
+      </article>
+      <article class="cmd-block" id="tck-list">
+        <h3><a class="self" href="#tck-list">tck list</a></h3>
+        <p class="desc">List time entries</p>
+        <pre class="usage">tck list [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--today</code></td><td>shortcut: today</td></tr>
+          <tr><td><code>--yesterday</code></td><td>shortcut: yesterday</td></tr>
+          <tr><td><code>--this-week</code></td><td>shortcut: current week (honors config week-start)</td></tr>
+          <tr><td><code>--last-week</code></td><td>shortcut: previous week</td></tr>
+          <tr><td><code>--this-month</code></td><td>shortcut: current calendar month (1st to last day)</td></tr>
+          <tr><td><code>--last-month</code></td><td>shortcut: previous calendar month</td></tr>
+          <tr><td><code>--last-7-days</code></td><td>shortcut: rolling 7 days ending today</td></tr>
+          <tr><td><code>--last-30-days</code></td><td>shortcut: rolling 30 days ending today</td></tr>
+          <tr><td><code>--this-year</code></td><td>shortcut: current calendar year</td></tr>
+          <tr><td><code>--last-year</code></td><td>shortcut: previous calendar year</td></tr>
+          <tr><td><code>--from &lt;datetime&gt;</code></td><td>range start (ISO datetime), used with --to</td></tr>
+          <tr><td><code>--to &lt;datetime&gt;</code></td><td>range end (ISO datetime), used with --from</td></tr>
+          <tr><td><code>--project &lt;name&gt;</code></td><td>filter by project name</td></tr>
+          <tr><td><code>--tag &lt;name&gt;</code></td><td>filter by tag name</td></tr>
+          <tr><td><code>--search &lt;text&gt;</code></td><td>only entries whose description contains every word given</td></tr>
+          <tr><td><code>--billable</code></td><td>only billable entries</td></tr>
+          <tr><td><code>--non-billable</code></td><td>only non-billable entries</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-report">
+        <h3><a class="self" href="#tck-report">tck report</a></h3>
+        <p class="desc">Generate reports over time entries</p>
+        <pre class="usage">tck report</pre>
+      </article>
+      <article class="cmd-block" id="tck-report-pdf">
+        <h3><a class="self" href="#tck-report-pdf">tck report pdf</a></h3>
+        <p class="desc">Generate a PDF report (charts + billable totals)</p>
+        <pre class="usage">tck report pdf [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--today</code></td><td>shortcut: today</td></tr>
+          <tr><td><code>--yesterday</code></td><td>shortcut: yesterday</td></tr>
+          <tr><td><code>--this-week</code></td><td>shortcut: current week (honors config week-start)</td></tr>
+          <tr><td><code>--last-week</code></td><td>shortcut: previous week</td></tr>
+          <tr><td><code>--this-month</code></td><td>shortcut: current calendar month (1st to last day)</td></tr>
+          <tr><td><code>--last-month</code></td><td>shortcut: previous calendar month</td></tr>
+          <tr><td><code>--last-7-days</code></td><td>shortcut: rolling 7 days ending today</td></tr>
+          <tr><td><code>--last-30-days</code></td><td>shortcut: rolling 30 days ending today</td></tr>
+          <tr><td><code>--this-year</code></td><td>shortcut: current calendar year</td></tr>
+          <tr><td><code>--last-year</code></td><td>shortcut: previous calendar year</td></tr>
+          <tr><td><code>--from &lt;datetime&gt;</code></td><td>range start (ISO datetime), used with --to</td></tr>
+          <tr><td><code>--to &lt;datetime&gt;</code></td><td>range end (ISO datetime), used with --from</td></tr>
+          <tr><td><code>--rounding &lt;mode&gt;</code></td><td>round each entry's duration: none | nearest | up | down (default: config rounding)</td></tr>
+          <tr><td><code>--rounding-minutes &lt;minutes&gt;</code></td><td>rounding increment in minutes, e.g. 6, 15, 30 (default: config rounding-minutes)</td></tr>
+          <tr><td><code>--project &lt;name&gt;</code></td><td>filter by project name</td></tr>
+          <tr><td><code>--client &lt;name&gt;</code></td><td>filter by client (all of its projects)</td></tr>
+          <tr><td><code>--tag &lt;name&gt;</code></td><td>filter by tag name</td></tr>
+          <tr><td><code>--search &lt;text&gt;</code></td><td>only entries whose description contains every word given</td></tr>
+          <tr><td><code>--billable</code></td><td>only billable entries</td></tr>
+          <tr><td><code>--non-billable</code></td><td>only non-billable entries</td></tr>
+          <tr><td><code>--preset &lt;name&gt;</code></td><td>load saved filter flags from a report preset; explicit flags override</td></tr>
+          <tr><td><code>--hide-rounding</code></td><td>omit the rounding note from the header and summary cards</td></tr>
+          <tr><td><code>-o, --output &lt;path&gt;</code></td><td>output file path</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-report-chart">
+        <h3><a class="self" href="#tck-report-chart">tck report chart</a></h3>
+        <p class="desc">Render hours-by-day and hours-by-project bar charts in the terminal</p>
+        <pre class="usage">tck report chart [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--today</code></td><td>shortcut: today</td></tr>
+          <tr><td><code>--yesterday</code></td><td>shortcut: yesterday</td></tr>
+          <tr><td><code>--this-week</code></td><td>shortcut: current week (honors config week-start)</td></tr>
+          <tr><td><code>--last-week</code></td><td>shortcut: previous week</td></tr>
+          <tr><td><code>--this-month</code></td><td>shortcut: current calendar month (1st to last day)</td></tr>
+          <tr><td><code>--last-month</code></td><td>shortcut: previous calendar month</td></tr>
+          <tr><td><code>--last-7-days</code></td><td>shortcut: rolling 7 days ending today</td></tr>
+          <tr><td><code>--last-30-days</code></td><td>shortcut: rolling 30 days ending today</td></tr>
+          <tr><td><code>--this-year</code></td><td>shortcut: current calendar year</td></tr>
+          <tr><td><code>--last-year</code></td><td>shortcut: previous calendar year</td></tr>
+          <tr><td><code>--from &lt;datetime&gt;</code></td><td>range start (ISO datetime), used with --to</td></tr>
+          <tr><td><code>--to &lt;datetime&gt;</code></td><td>range end (ISO datetime), used with --from</td></tr>
+          <tr><td><code>--rounding &lt;mode&gt;</code></td><td>round each entry's duration: none | nearest | up | down (default: config rounding)</td></tr>
+          <tr><td><code>--rounding-minutes &lt;minutes&gt;</code></td><td>rounding increment in minutes, e.g. 6, 15, 30 (default: config rounding-minutes)</td></tr>
+          <tr><td><code>--project &lt;name&gt;</code></td><td>filter by project name</td></tr>
+          <tr><td><code>--client &lt;name&gt;</code></td><td>filter by client (all of its projects)</td></tr>
+          <tr><td><code>--tag &lt;name&gt;</code></td><td>filter by tag name</td></tr>
+          <tr><td><code>--search &lt;text&gt;</code></td><td>only entries whose description contains every word given</td></tr>
+          <tr><td><code>--billable</code></td><td>only billable entries</td></tr>
+          <tr><td><code>--non-billable</code></td><td>only non-billable entries</td></tr>
+          <tr><td><code>--preset &lt;name&gt;</code></td><td>load saved filter flags from a report preset; explicit flags override</td></tr>
+          <tr><td><code>--section &lt;which&gt;</code></td><td>which chart(s) to show: days | projects | both</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-report-preset">
+        <h3><a class="self" href="#tck-report-preset">tck report preset</a></h3>
+        <p class="desc">Manage saved report filter presets</p>
+        <pre class="usage">tck report preset</pre>
+      </article>
+      <article class="cmd-block" id="tck-report-preset-save">
+        <h3><a class="self" href="#tck-report-preset-save">tck report preset save</a></h3>
+        <p class="desc">Save the given filter flags under a name</p>
+        <pre class="usage">tck report preset save &lt;name&gt; [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--today</code></td><td>shortcut: today</td></tr>
+          <tr><td><code>--yesterday</code></td><td>shortcut: yesterday</td></tr>
+          <tr><td><code>--this-week</code></td><td>shortcut: current week (honors config week-start)</td></tr>
+          <tr><td><code>--last-week</code></td><td>shortcut: previous week</td></tr>
+          <tr><td><code>--this-month</code></td><td>shortcut: current calendar month (1st to last day)</td></tr>
+          <tr><td><code>--last-month</code></td><td>shortcut: previous calendar month</td></tr>
+          <tr><td><code>--last-7-days</code></td><td>shortcut: rolling 7 days ending today</td></tr>
+          <tr><td><code>--last-30-days</code></td><td>shortcut: rolling 30 days ending today</td></tr>
+          <tr><td><code>--this-year</code></td><td>shortcut: current calendar year</td></tr>
+          <tr><td><code>--last-year</code></td><td>shortcut: previous calendar year</td></tr>
+          <tr><td><code>--from &lt;datetime&gt;</code></td><td>range start (ISO datetime), used with --to</td></tr>
+          <tr><td><code>--to &lt;datetime&gt;</code></td><td>range end (ISO datetime), used with --from</td></tr>
+          <tr><td><code>--rounding &lt;mode&gt;</code></td><td>round each entry's duration: none | nearest | up | down (default: config rounding)</td></tr>
+          <tr><td><code>--rounding-minutes &lt;minutes&gt;</code></td><td>rounding increment in minutes, e.g. 6, 15, 30 (default: config rounding-minutes)</td></tr>
+          <tr><td><code>--project &lt;name&gt;</code></td><td>filter by project name</td></tr>
+          <tr><td><code>--client &lt;name&gt;</code></td><td>filter by client (all of its projects)</td></tr>
+          <tr><td><code>--tag &lt;name&gt;</code></td><td>filter by tag name</td></tr>
+          <tr><td><code>--search &lt;text&gt;</code></td><td>only entries whose description contains every word given</td></tr>
+          <tr><td><code>--billable</code></td><td>only billable entries</td></tr>
+          <tr><td><code>--non-billable</code></td><td>only non-billable entries</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-report-preset-list">
+        <h3><a class="self" href="#tck-report-preset-list">tck report preset list</a></h3>
+        <p class="desc">List saved report presets</p>
+        <pre class="usage">tck report preset list</pre>
+      </article>
+      <article class="cmd-block" id="tck-report-preset-rm">
+        <h3><a class="self" href="#tck-report-preset-rm">tck report preset rm</a></h3>
+        <p class="desc">Delete a saved report preset</p>
+        <pre class="usage">tck report preset rm &lt;name&gt;</pre>
+      </article>
+      <article class="cmd-block" id="tck-invoice">
+        <h3><a class="self" href="#tck-invoice">tck invoice</a></h3>
+        <p class="desc">Generate invoices from billable time</p>
+        <pre class="usage">tck invoice</pre>
+      </article>
+      <article class="cmd-block" id="tck-invoice-pdf">
+        <h3><a class="self" href="#tck-invoice-pdf">tck invoice pdf</a></h3>
+        <p class="desc">Generate a PDF invoice (line items priced by project, tax, total)</p>
+        <pre class="usage">tck invoice pdf [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--today</code></td><td>shortcut: today</td></tr>
+          <tr><td><code>--yesterday</code></td><td>shortcut: yesterday</td></tr>
+          <tr><td><code>--this-week</code></td><td>shortcut: current week (honors config week-start)</td></tr>
+          <tr><td><code>--last-week</code></td><td>shortcut: previous week</td></tr>
+          <tr><td><code>--this-month</code></td><td>shortcut: current calendar month (1st to last day)</td></tr>
+          <tr><td><code>--last-month</code></td><td>shortcut: previous calendar month</td></tr>
+          <tr><td><code>--last-7-days</code></td><td>shortcut: rolling 7 days ending today</td></tr>
+          <tr><td><code>--last-30-days</code></td><td>shortcut: rolling 30 days ending today</td></tr>
+          <tr><td><code>--this-year</code></td><td>shortcut: current calendar year</td></tr>
+          <tr><td><code>--last-year</code></td><td>shortcut: previous calendar year</td></tr>
+          <tr><td><code>--from &lt;datetime&gt;</code></td><td>range start (ISO datetime), used with --to</td></tr>
+          <tr><td><code>--to &lt;datetime&gt;</code></td><td>range end (ISO datetime), used with --from</td></tr>
+          <tr><td><code>--rounding &lt;mode&gt;</code></td><td>round each entry's duration: none | nearest | up | down (default: config rounding)</td></tr>
+          <tr><td><code>--rounding-minutes &lt;minutes&gt;</code></td><td>rounding increment in minutes, e.g. 6, 15, 30 (default: config rounding-minutes)</td></tr>
+          <tr><td><code>--preset &lt;name&gt;</code></td><td>load saved filter flags from a report preset; explicit flags override</td></tr>
+          <tr><td><code>--number &lt;id&gt;</code></td><td>invoice number/identifier, e.g. INV-2026-001 (default: auto from invoice config numbering)</td></tr>
+          <tr><td><code>--project &lt;name&gt;</code></td><td>only include this project's entries</td></tr>
+          <tr><td><code>--client &lt;name&gt;</code></td><td>only include this client's projects</td></tr>
+          <tr><td><code>--tag &lt;name&gt;</code></td><td>only include entries with this tag</td></tr>
+          <tr><td><code>--search &lt;text&gt;</code></td><td>only include entries whose description contains every word given</td></tr>
+          <tr><td><code>--bill-to &lt;text&gt;</code></td><td>recipient block, newline-separated (default: invoice config bill-to)</td></tr>
+          <tr><td><code>--issue-date &lt;date&gt;</code></td><td>invoice issue date (ISO), defaults to today</td></tr>
+          <tr><td><code>--due-date &lt;date&gt;</code></td><td>payment due date (ISO)</td></tr>
+          <tr><td><code>--tax-rate &lt;percent&gt;</code></td><td>tax percentage applied to the subtotal (default: invoice config tax-rate)</td></tr>
+          <tr><td><code>--notes &lt;text&gt;</code></td><td>free-form notes printed at the bottom (default: invoice config notes)</td></tr>
+          <tr><td><code>-o, --output &lt;path&gt;</code></td><td>output file path</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-invoice-config">
+        <h3><a class="self" href="#tck-invoice-config">tck invoice config</a></h3>
+        <p class="desc">Manage saved invoice defaults</p>
+        <pre class="usage">tck invoice config</pre>
+      </article>
+      <article class="cmd-block" id="tck-invoice-config-set">
+        <h3><a class="self" href="#tck-invoice-config-set">tck invoice config set</a></h3>
+        <p class="desc">Set one or more invoice defaults</p>
+        <pre class="usage">tck invoice config set [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--bill-to &lt;text&gt;</code></td><td>default recipient block, newline-separated (e.g. &quot;Acme Corp\n123 Main St&quot;)</td></tr>
+          <tr><td><code>--tax-rate &lt;percent&gt;</code></td><td>default tax percentage applied to the subtotal, e.g. 21</td></tr>
+          <tr><td><code>--notes &lt;text&gt;</code></td><td>default notes printed at the bottom of the invoice</td></tr>
+          <tr><td><code>--number-template &lt;template&gt;</code></td><td>invoice numbering template, e.g. &quot;INV-2026-%03d&quot;</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-invoice-config-get">
+        <h3><a class="self" href="#tck-invoice-config-get">tck invoice config get</a></h3>
+        <p class="desc">Print the saved invoice defaults</p>
+        <pre class="usage">tck invoice config get</pre>
+      </article>
+      <article class="cmd-block" id="tck-export">
+        <h3><a class="self" href="#tck-export">tck export</a></h3>
+        <p class="desc">Export time entries to a file</p>
+        <pre class="usage">tck export</pre>
+      </article>
+      <article class="cmd-block" id="tck-export-csv">
+        <h3><a class="self" href="#tck-export-csv">tck export csv</a></h3>
+        <p class="desc">Export a flat CSV dump of time entries</p>
+        <pre class="usage">tck export csv [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--today</code></td><td>shortcut: today</td></tr>
+          <tr><td><code>--yesterday</code></td><td>shortcut: yesterday</td></tr>
+          <tr><td><code>--this-week</code></td><td>shortcut: current week (honors config week-start)</td></tr>
+          <tr><td><code>--last-week</code></td><td>shortcut: previous week</td></tr>
+          <tr><td><code>--this-month</code></td><td>shortcut: current calendar month (1st to last day)</td></tr>
+          <tr><td><code>--last-month</code></td><td>shortcut: previous calendar month</td></tr>
+          <tr><td><code>--last-7-days</code></td><td>shortcut: rolling 7 days ending today</td></tr>
+          <tr><td><code>--last-30-days</code></td><td>shortcut: rolling 30 days ending today</td></tr>
+          <tr><td><code>--this-year</code></td><td>shortcut: current calendar year</td></tr>
+          <tr><td><code>--last-year</code></td><td>shortcut: previous calendar year</td></tr>
+          <tr><td><code>--from &lt;datetime&gt;</code></td><td>range start (ISO datetime), used with --to</td></tr>
+          <tr><td><code>--to &lt;datetime&gt;</code></td><td>range end (ISO datetime), used with --from</td></tr>
+          <tr><td><code>--rounding &lt;mode&gt;</code></td><td>round each entry's duration: none | nearest | up | down (default: config rounding)</td></tr>
+          <tr><td><code>--rounding-minutes &lt;minutes&gt;</code></td><td>rounding increment in minutes, e.g. 6, 15, 30 (default: config rounding-minutes)</td></tr>
+          <tr><td><code>--project &lt;name&gt;</code></td><td>filter by project name</td></tr>
+          <tr><td><code>--client &lt;name&gt;</code></td><td>filter by client (all of its projects)</td></tr>
+          <tr><td><code>--tag &lt;name&gt;</code></td><td>filter by tag name</td></tr>
+          <tr><td><code>--search &lt;text&gt;</code></td><td>only entries whose description contains every word given</td></tr>
+          <tr><td><code>--billable</code></td><td>only billable entries</td></tr>
+          <tr><td><code>--non-billable</code></td><td>only non-billable entries</td></tr>
+          <tr><td><code>--preset &lt;name&gt;</code></td><td>load saved filter flags from a report preset; explicit flags override</td></tr>
+          <tr><td><code>-o, --output &lt;path&gt;</code></td><td>output file path</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-earnings">
+        <h3><a class="self" href="#tck-earnings">tck earnings</a></h3>
+        <p class="desc">Show income for today, this week, this month and this year (or a given range)</p>
+        <pre class="usage">tck earnings [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--today</code></td><td>shortcut: today</td></tr>
+          <tr><td><code>--yesterday</code></td><td>shortcut: yesterday</td></tr>
+          <tr><td><code>--this-week</code></td><td>shortcut: current week (honors config week-start)</td></tr>
+          <tr><td><code>--last-week</code></td><td>shortcut: previous week</td></tr>
+          <tr><td><code>--this-month</code></td><td>shortcut: current calendar month (1st to last day)</td></tr>
+          <tr><td><code>--last-month</code></td><td>shortcut: previous calendar month</td></tr>
+          <tr><td><code>--last-7-days</code></td><td>shortcut: rolling 7 days ending today</td></tr>
+          <tr><td><code>--last-30-days</code></td><td>shortcut: rolling 30 days ending today</td></tr>
+          <tr><td><code>--this-year</code></td><td>shortcut: current calendar year</td></tr>
+          <tr><td><code>--last-year</code></td><td>shortcut: previous calendar year</td></tr>
+          <tr><td><code>--from &lt;datetime&gt;</code></td><td>range start (ISO datetime), used with --to</td></tr>
+          <tr><td><code>--to &lt;datetime&gt;</code></td><td>range end (ISO datetime), used with --from</td></tr>
+          <tr><td><code>--rounding &lt;mode&gt;</code></td><td>round each entry's duration: none | nearest | up | down (default: config rounding)</td></tr>
+          <tr><td><code>--rounding-minutes &lt;minutes&gt;</code></td><td>rounding increment in minutes, e.g. 6, 15, 30 (default: config rounding-minutes)</td></tr>
+          <tr><td><code>--project &lt;name&gt;</code></td><td>only count this project's entries</td></tr>
+          <tr><td><code>--client &lt;name&gt;</code></td><td>only count this client's projects</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-rate">
+        <h3><a class="self" href="#tck-rate">tck rate</a></h3>
+        <p class="desc">Set hourly rates</p>
+        <pre class="usage">tck rate</pre>
+      </article>
+      <article class="cmd-block" id="tck-rate-set">
+        <h3><a class="self" href="#tck-rate-set">tck rate set</a></h3>
+        <p class="desc">Set the default rate for the active workspace, or a project's rate override</p>
+        <pre class="usage">tck rate set &lt;amount&gt; [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--project &lt;name&gt;</code></td><td>set this project's rate instead of the workspace default</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-config">
+        <h3><a class="self" href="#tck-config">tck config</a></h3>
+        <p class="desc">Read/write user configuration</p>
+        <pre class="usage">tck config</pre>
+      </article>
+      <article class="cmd-block" id="tck-config-set">
+        <h3><a class="self" href="#tck-config-set">tck config set</a></h3>
+        <p class="desc">Set a config value (keys: db-path, week-start, rounding, rounding-minutes, git-hook-stops-timer)</p>
+        <pre class="usage">tck config set &lt;key&gt; &lt;value&gt;</pre>
+      </article>
+      <article class="cmd-block" id="tck-config-get">
+        <h3><a class="self" href="#tck-config-get">tck config get</a></h3>
+        <p class="desc">Print a config value, or all of them if omitted</p>
+        <pre class="usage">tck config get [key]</pre>
+      </article>
+      <article class="cmd-block" id="tck-backup">
+        <h3><a class="self" href="#tck-backup">tck backup</a></h3>
+        <p class="desc">Back up the database (binary .db copy + plain-text SQL dump)</p>
+        <pre class="usage">tck backup [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--dir &lt;path&gt;</code></td><td>backup directory</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-restore">
+        <h3><a class="self" href="#tck-restore">tck restore</a></h3>
+        <p class="desc">Restore the database from a backup (.db binary or .sql dump)</p>
+        <pre class="usage">tck restore &lt;path&gt;</pre>
+      </article>
+      <article class="cmd-block" id="tck-mcp">
+        <h3><a class="self" href="#tck-mcp">tck mcp</a></h3>
+        <p class="desc">Start an MCP server over stdio for AI clients to connect to</p>
+        <pre class="usage">tck mcp</pre>
+      </article>
+      <article class="cmd-block" id="tck-git-hook">
+        <h3><a class="self" href="#tck-git-hook">tck git-hook</a></h3>
+        <p class="desc">Link commits to time entries</p>
+        <pre class="usage">tck git-hook</pre>
+      </article>
+      <article class="cmd-block" id="tck-git-hook-attach">
+        <h3><a class="self" href="#tck-git-hook-attach">tck git-hook attach</a></h3>
+        <p class="desc">Tag the running entry with the current (or given) commit</p>
+        <pre class="usage">tck git-hook attach [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--repo &lt;name&gt;</code></td><td>repo name (defaults to the `origin` remote, or the folder name)</td></tr>
+          <tr><td><code>--commit &lt;sha&gt;</code></td><td>commit hash (defaults to HEAD)</td></tr>
+          <tr><td><code>--branch &lt;name&gt;</code></td><td>branch name (defaults to the current branch)</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-git-hook-install">
+        <h3><a class="self" href="#tck-git-hook-install">tck git-hook install</a></h3>
+        <p class="desc">Install a post-commit hook in the current repo that runs `tck git-hook attach`</p>
+        <pre class="usage">tck git-hook install [options]</pre>
+        <table class="opts">
+          <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+          <tbody>
+          <tr><td><code>--force</code></td><td>overwrite a pre-existing post-commit hook not managed by trackly</td></tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="cmd-block" id="tck-git-hook-uninstall">
+        <h3><a class="self" href="#tck-git-hook-uninstall">tck git-hook uninstall</a></h3>
+        <p class="desc">Remove the post-commit hook installed by `tck git-hook install`</p>
+        <pre class="usage">tck git-hook uninstall</pre>
+      </article>
+      <article class="cmd-block" id="tck-git-hook-status">
+        <h3><a class="self" href="#tck-git-hook-status">tck git-hook status</a></h3>
+        <p class="desc">Show whether the post-commit hook is installed in the current repo</p>
+        <pre class="usage">tck git-hook status</pre>
+      </article>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <h2>Frequently asked questions</h2>
+      <article class="faq-item" id="faq-1">
+        <h3>What is trackly?</h3>
+        <p>trackly is a time-tracking CLI installed as <code>tck</code>. It gives you <code>start</code>/<code>stop</code> timers, projects and clients, hourly rates, PDF/CSV reports and PDF invoices — all from the terminal, backed by one local SQLite file.</p>
+      </article>
+      <article class="faq-item" id="faq-2">
+        <h3>Is trackly a Toggl alternative for the terminal?</h3>
+        <p>That's the idea. It borrows Toggl's model — workspaces, projects, tags, billable hours — but drops the SaaS part: no account, no browser tab, no subscription, and your data is a file you own.</p>
+        <p>What it doesn't do is team features. There's no shared workspace, no seats, no approvals; it's built for one person tracking their own hours.</p>
+      </article>
+      <article class="faq-item" id="faq-3">
+        <h3>Does trackly work offline?</h3>
+        <p>Always. There is no server and no network call in normal use — every command reads and writes a local SQLite database. The only thing that needs the internet is installing it from npm.</p>
+      </article>
+      <article class="faq-item" id="faq-4">
+        <h3>Where is my data stored?</h3>
+        <p>In <code>~/.config/trackly/trackly.db</code>, with settings alongside it in <code>config.toml</code>. Set the <code>TRACKLY_CONFIG_DIR</code> environment variable to point the whole thing somewhere else — handy for keeping a separate profile, or for trying commands without touching your real hours.</p>
+      </article>
+      <article class="faq-item" id="faq-5">
+        <h3>Can I sync my time entries between two computers?</h3>
+        <p>You can point the database at a synced folder (<code>tck config set db-path ~/Dropbox/trackly.db</code>). trackly deliberately uses SQLite's <code>DELETE</code> journal mode instead of WAL so there are no side files for a sync client to mangle.</p>
+        <p>One caveat worth respecting: don't run commands on two machines at once against the same synced file. There's no conflict resolution — last write wins, like any file in a synced folder.</p>
+      </article>
+      <article class="faq-item" id="faq-6">
+        <h3>How do I export my hours to PDF or CSV?</h3>
+        <p><code>tck report pdf --this-month -o report.pdf</code> for a PDF with charts, <code>tck export csv --last-month -o hours.csv</code> for a flat spreadsheet-ready file. Both take the same date shortcuts and filters, so whatever you can see on screen you can export.</p>
+        <p>There's also <code>tck report chart</code>, which draws the same data as bar charts right in the terminal when you just want a look.</p>
+      </article>
+      <article class="faq-item" id="faq-7">
+        <h3>Can I invoice a client from my tracked time?</h3>
+        <p>Yes — <code>tck invoice pdf --client &quot;Acme Corp&quot; --last-month -o invoice.pdf</code> prices every billable hour at its own rate, applies tax, and numbers the invoice from a template you configure once with <code>tck invoice config set</code>. Non-billable entries are always excluded.</p>
+      </article>
+      <article class="faq-item" id="faq-8">
+        <h3>What happens to past entries when I raise my hourly rate?</h3>
+        <p>Nothing — and that's deliberate. Every entry freezes the rate it resolved to (project rate, falling back to the workspace default) the moment it's created, so <code>tck rate set</code> only affects work tracked from then on. You'll never accidentally re-bill last quarter at this quarter's price.</p>
+      </article>
+      <article class="faq-item" id="faq-9">
+        <h3>How do I track time for several clients?</h3>
+        <p>Create one workspace per client with <code>tck workspace create</code>, and switch between them with <code>tck workspace switch</code>. Projects, tags and entries never leak across workspaces.</p>
+        <p>If one client owns several projects, tag the projects with <code>--client</code> instead and use <code>--client</code> on reports, exports, invoices and earnings to slice across all of them at once.</p>
+      </article>
+      <article class="faq-item" id="faq-10">
+        <h3>How do I find an entry when I only half-remember what I wrote?</h3>
+        <p>Use <code>--search</code>: <code>tck list --search &quot;checkout bug&quot;</code> matches any description containing every word you gave, in any order. It ignores case and accents, so <code>sesion</code> finds &quot;sesión&quot;.</p>
+        <p>It combines with every other filter and works on <code>tck list</code>, reports, exports and invoices.</p>
+      </article>
+      <article class="faq-item" id="faq-11">
+        <h3>Can an AI assistant like Claude manage my time tracking?</h3>
+        <p>That's what <code>tck mcp</code> is for: it starts a <a href="https://modelcontextprotocol.io">Model Context Protocol</a> server exposing the same operations as MCP tools, so Claude Desktop or Claude Code can start timers, log entries and pull reports on your behalf. The data still lives only on your machine.</p>
+      </article>
+      <article class="faq-item" id="faq-12">
+        <h3>Does trackly run on Windows?</h3>
+        <p>It runs anywhere Node.js 20+ runs — macOS, Linux and Windows. Installation is the same <code>npm install -g @tonyakitori/trackly</code> everywhere, and there's nothing to compile: even the charts in the PDFs are hand-built SVG rather than a native rendering library.</p>
+      </article>
+      <article class="faq-item" id="faq-13">
+        <h3>How do I back up or move my data?</h3>
+        <p><code>tck backup -o ./backups</code> writes two things at once: a byte-for-byte copy of the database and a plain-text SQL dump. The dump is diffable and survives a corrupted SQLite file, which a binary copy alone would not. <code>tck restore</code> reads either one back.</p>
+      </article>
+      <article class="faq-item" id="faq-14">
+        <h3>Is trackly free and open source?</h3>
+        <p>Yes, MIT licensed. The source is on <a href="https://github.com/AntonioHReyes/trackly">GitHub</a> and the package on <a href="https://www.npmjs.com/package/@tonyakitori/trackly">npm</a>.</p>
+      </article>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap" style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; width:100%;">
+    <span>&copy; 2026 Antonio Huerta Reyes &middot; MIT License</span>
+    <span>
+      <a href="../">Home</a>
+      &middot;
+      <a href="https://github.com/AntonioHReyes/trackly">GitHub</a>
+      &middot;
+      <a href="https://www.npmjs.com/package/@tonyakitori/trackly">npm</a>
+      &middot;
+      <a href="https://buymeacoffee.com/anhr9728w" rel="noopener">Buy me a coffee</a>
+    </span>
+  </div>
+</footer>
+
+</body>
+</html>

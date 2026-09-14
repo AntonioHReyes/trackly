@@ -34,6 +34,7 @@ Requires Node.js >= 20. Binary name after install: `tck`.
 ## Links
 
 - Homepage: https://antoniohreyes.github.io/trackly/
+- Command reference + FAQ: https://antoniohreyes.github.io/trackly/docs/
 - Repository: https://github.com/AntonioHReyes/trackly
 - npm package: https://www.npmjs.com/package/@tonyakitori/trackly
 - Full command reference: https://github.com/AntonioHReyes/trackly#readme

@@ -37,6 +37,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/cli/index.ts",
+    "docs:build": "tsx scripts/build-docs.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
