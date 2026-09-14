@@ -20,6 +20,7 @@ export type ReportFilterOptions = DateRangeCliOptions &
     project?: string;
     client?: string;
     tag?: string;
+    search?: string;
     billable?: boolean;
     nonBillable?: boolean;
     /** Only registered on `report pdf` — the CSV has no header to hide it from. */
@@ -32,6 +33,7 @@ export function addReportFilterOptions(command: Command): Command {
     .option("--project <name>", "filter by project name")
     .option("--client <name>", "filter by client (all of its projects)")
     .option("--tag <name>", "filter by tag name")
+    .option("--search <text>", "only entries whose description contains every word given")
     .option("--billable", "only billable entries")
     .option("--non-billable", "only non-billable entries");
 }
@@ -68,6 +70,7 @@ export async function buildReportData(
   if (projectId) filter.projectId = projectId;
   if (projectIds) filter.projectIds = projectIds;
   if (tagId) filter.tagId = tagId;
+  if (options.search) filter.search = options.search;
   if (billable !== undefined) filter.billable = billable;
 
   return container.reportService.build(workspace, filter, {

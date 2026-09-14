@@ -8,6 +8,7 @@ import type {
   TimeEntryFilter,
   TimeEntryRepository,
 } from "../../domain/repositories/TimeEntryRepository.js";
+import { FOLD_ACCENTS_SQL_FN, foldAccents } from "../db/textFolding.js";
 
 interface TimeEntryRow {
   id: string;
@@ -182,8 +183,28 @@ export class SqliteTimeEntryRepository implements TimeEntryRepository {
       clauses.push("te.billable = @billable");
       params.billable = filter.billable ? 1 : 0;
     }
+    if (filter.search) {
+      // One clause per term, ANDed: "fix api" matches a description holding
+      // both words in any order. LIKE folds case (ASCII), `fold_accents`
+      // folds the diacritics on both sides so "sesion" finds "sesión".
+      SqliteTimeEntryRepository.searchTerms(filter.search).forEach((term, i) => {
+        clauses.push(`${FOLD_ACCENTS_SQL_FN}(te.description) LIKE @search${i} ESCAPE '\\'`);
+        params[`search${i}`] = `%${term}%`;
+      });
+    }
 
     return { where: clauses.join(" AND "), params };
+  }
+
+  /**
+   * Splits a free-text search into terms, folding their accents (to match the
+   * folded column) and neutralizing LIKE's wildcards.
+   */
+  private static searchTerms(search: string): string[] {
+    return foldAccents(search)
+      .split(/\s+/)
+      .filter((term) => term.length > 0)
+      .map((term) => term.replace(/[\\%_]/g, (char) => `\\${char}`));
   }
 
   private static toRow(entry: TimeEntry): Record<string, unknown> {

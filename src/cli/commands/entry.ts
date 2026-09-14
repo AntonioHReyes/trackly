@@ -273,6 +273,7 @@ export function registerEntryCommands(program: Command, container: Container): v
     .description("List time entries")
     .option("--project <name>", "filter by project name")
     .option("--tag <name>", "filter by tag name")
+    .option("--search <text>", "only entries whose description contains every word given")
     .option("--billable", "only billable entries")
     .option("--non-billable", "only non-billable entries");
 
@@ -281,6 +282,7 @@ export function registerEntryCommands(program: Command, container: Container): v
       options: DateRangeCliOptions & {
         project?: string;
         tag?: string;
+        search?: string;
         billable?: boolean;
         nonBillable?: boolean;
       },
@@ -300,11 +302,15 @@ export function registerEntryCommands(program: Command, container: Container): v
       if (range) filter.range = range;
       if (projectId) filter.projectId = projectId;
       if (tagId) filter.tagId = tagId;
+      if (options.search) filter.search = options.search;
       if (billable !== undefined) filter.billable = billable;
 
       const entries = await container.timeEntryService.list(filter);
       if (entries.length === 0) {
-        ui.empty("No time entries found.", 'tck start "what you are doing"');
+        ui.empty(
+          "No time entries found.",
+          options.search ? "tck list --search <fewer words>" : 'tck start "what you are doing"',
+        );
         return;
       }
       const projectNames = new Map(

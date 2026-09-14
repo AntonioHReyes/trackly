@@ -22,6 +22,7 @@ export type InvoiceCliOptions = DateRangeCliOptions &
     project?: string;
     client?: string;
     tag?: string;
+    search?: string;
     /** Omit to auto-generate from `tck invoice config set --number-template ...`. */
     number?: string;
     billTo?: string;
@@ -41,6 +42,7 @@ export function addInvoiceOptions(command: Command): Command {
     .option("--project <name>", "only include this project's entries")
     .option("--client <name>", "only include this client's projects")
     .option("--tag <name>", "only include entries with this tag")
+    .option("--search <text>", "only include entries whose description contains every word given")
     .option("--bill-to <text>", "recipient block, newline-separated (default: invoice config bill-to)")
     .option("--issue-date <date>", "invoice issue date (ISO), defaults to today")
     .option("--due-date <date>", "payment due date (ISO)")
@@ -78,6 +80,7 @@ export async function buildInvoiceData(
   if (projectId) filter.projectId = projectId;
   if (projectIds) filter.projectIds = projectIds;
   if (tagId) filter.tagId = tagId;
+  if (options.search) filter.search = options.search;
 
   // Explicit flags win over the saved invoice defaults, the same way they
   // win over a `--preset`'s stored filters.

@@ -107,6 +107,7 @@ tck stop
 tck add "Client call" --from 2026-01-05T09:00 --to 2026-01-05T10:00 --project Website
 tck status
 tck list --this-week --project Website
+tck list --search "checkout bug"                # find it by what you wrote
 tck show <id>                                   # full, untruncated entry detail
 tck edit <id> --description "Fixing the checkout bug (follow-up)"
 tck rm <id>
@@ -192,6 +193,25 @@ Calendar shortcuts snap to natural boundaries (a month is the 1st to the
 last day); `--last-N-days` are rolling windows that include today.
 `--this-week`/`--last-week` honor `tck config set week-start`.
 
+### Searching descriptions
+
+When you only half-remember what you wrote, filter by text instead of by
+date:
+
+```bash
+tck list --search checkout              # any entry mentioning "checkout"
+tck list --search "checkout bug"        # both words, in any order
+tck list --last-month --search api --project Website
+tck export csv --search migration -o migration.csv
+```
+
+`--search` is accepted by `list`, `report pdf`, `report chart`, `export
+csv`, and `invoice pdf`, and combines with every other filter. Matching is
+case-insensitive, accent-insensitive, and by substring (`check` finds
+"checkout", `sesion` finds "sesión", and `ano` finds "año"); each
+whitespace-separated word must appear somewhere in the description, so
+extra words narrow the results rather than widening them.
+
 ### Reports and exports
 
 ```bash
@@ -202,7 +222,7 @@ tck report chart --this-week                      # bar charts, right in the ter
 tck report chart --this-month --section projects  # just the by-project breakdown
 ```
 
-All three accept `--project`, `--client`, `--tag`,
+All three accept `--project`, `--client`, `--tag`, `--search`,
 `--billable`/`--non-billable`, and rounding flags (`--rounding`,
 `--rounding-minutes`), on top of the date shortcuts above. `report chart`
 renders the same hours-by-day and hours-by-project data as `report pdf`, as

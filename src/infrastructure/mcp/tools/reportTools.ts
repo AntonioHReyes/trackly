@@ -20,6 +20,10 @@ const reportFilterShape = {
     .optional()
     .describe("Filter by client name — covers every project belonging to that client"),
   tag: z.string().optional().describe("Filter by tag name"),
+  search: z
+    .string()
+    .optional()
+    .describe("Free-text description match; every whitespace-separated word must appear"),
   billable: z.boolean().optional().describe("Filter to billable (true) or non-billable (false) only"),
   rounding: z.enum(ROUNDING_MODES as [RoundingMode, ...RoundingMode[]]).optional(),
   roundingMinutes: z.number().int().positive().optional(),
@@ -33,6 +37,7 @@ async function buildReportData(
     project?: string | undefined;
     client?: string | undefined;
     tag?: string | undefined;
+    search?: string | undefined;
     billable?: boolean | undefined;
     rounding?: RoundingMode | undefined;
     roundingMinutes?: number | undefined;
@@ -55,6 +60,7 @@ async function buildReportData(
     const tagId = (await resolveTagIds(container, workspace.id, input.tag))[0];
     if (tagId) filter.tagId = tagId;
   }
+  if (input.search) filter.search = input.search;
   if (input.billable !== undefined) filter.billable = input.billable;
 
   const rounding = Rounding.of(

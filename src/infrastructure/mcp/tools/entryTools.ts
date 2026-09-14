@@ -200,16 +200,21 @@ export function registerEntryTools(server: McpServer, container: Container): voi
     "list_entries",
     {
       title: "List time entries",
-      description: "List time entries in a workspace, optionally filtered by date range/project/tag/billable",
+      description:
+        "List time entries in a workspace, optionally filtered by date range/project/tag/description text/billable",
       inputSchema: {
         workspace: workspaceField,
         ...dateRangeShape,
         project: z.string().optional().describe("Filter by project name"),
         tag: z.string().optional().describe("Filter by tag name"),
+        search: z
+          .string()
+          .optional()
+          .describe("Free-text description match; every whitespace-separated word must appear"),
         billable: z.boolean().optional().describe("Filter to billable (true) or non-billable (false) only"),
       },
     },
-    safeHandler(async ({ workspace, project, tag, billable, ...rangeInput }) => {
+    safeHandler(async ({ workspace, project, tag, search, billable, ...rangeInput }) => {
       const ws = await container.workspaceService.resolveActive(workspace);
       const weekStart = container.configStore.read().weekStart;
       const { range } = resolveRangeInput(rangeInput, weekStart);
@@ -221,6 +226,7 @@ export function registerEntryTools(server: McpServer, container: Container): voi
         const tagId = (await resolveTagIds(container, ws.id, tag))[0];
         if (tagId) filter.tagId = tagId;
       }
+      if (search) filter.search = search;
       if (billable !== undefined) filter.billable = billable;
 
       const [entries, { projectNameById, tagNameById }] = await Promise.all([

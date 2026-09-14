@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { MIGRATIONS } from "./migrations.js";
+import { registerTextFolding } from "./textFolding.js";
 
 interface SchemaVersionRow {
   version: number;
@@ -23,6 +24,7 @@ export class SqliteConnection {
     this.db = new Database(path);
     this.db.pragma("journal_mode = DELETE");
     this.db.pragma("foreign_keys = ON");
+    registerTextFolding(this.db);
     this.runMigrations();
   }
 

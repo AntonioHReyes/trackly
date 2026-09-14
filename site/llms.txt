@@ -14,6 +14,9 @@
   later rate change never repriced past work.
 - `--client` filters reports, exports, invoices, and earnings across every
   project that client owns.
+- `--search <text>` finds entries by description text (case- and
+  accent-insensitive substring, every word must match) on `tck list`,
+  reports, exports, and invoices.
 - `tck report pdf`, `tck export csv`, and `tck report chart` (ANSI, in the
   terminal) share the same date/filter flags.
 - `tck invoice pdf` generates PDF invoices priced from billable time, with

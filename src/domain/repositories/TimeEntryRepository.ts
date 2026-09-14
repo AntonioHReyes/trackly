@@ -13,6 +13,12 @@ export interface TimeEntryFilter {
   projectIds?: string[];
   tagId?: string;
   billable?: boolean;
+  /**
+   * Free-text match over the description — every whitespace-separated term
+   * must appear, case-insensitively, so half-remembered wording still finds
+   * the entry.
+   */
+  search?: string;
 }
 
 export interface TimeEntryRepository {

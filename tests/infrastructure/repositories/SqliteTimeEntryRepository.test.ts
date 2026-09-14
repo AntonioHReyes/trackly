@@ -203,6 +203,68 @@ describe("SqliteTimeEntryRepository", () => {
     expect(noMatches).toHaveLength(0);
   });
 
+  describe("free-text search", () => {
+    beforeEach(async () => {
+      for (const description of [
+        "Fixing the checkout bug",
+        "Checkout API review",
+        "100% done with the design",
+        "Sesión de diseño con el año fiscal",
+      ]) {
+        await repo.save(
+          TimeEntry.addManual({
+            workspaceId,
+            description,
+            startTs: new Date("2026-01-01T09:00:00Z"),
+            endTs: new Date("2026-01-01T10:00:00Z"),
+          }),
+        );
+      }
+    });
+
+    const search = async (text: string): Promise<string[]> =>
+      (await repo.findByFilter({ workspaceId, search: text })).map((e) => e.description);
+
+    it("matches a substring regardless of case", async () => {
+      expect((await search("CHECKOUT")).sort()).toEqual([
+        "Checkout API review",
+        "Fixing the checkout bug",
+      ]);
+      expect(await search("chec")).toHaveLength(2);
+    });
+
+    it("requires every word, in any order", async () => {
+      expect(await search("checkout bug")).toEqual(["Fixing the checkout bug"]);
+      expect(await search("bug checkout")).toEqual(["Fixing the checkout bug"]);
+      expect(await search("checkout missing")).toHaveLength(0);
+    });
+
+    it("treats LIKE wildcards as literal characters", async () => {
+      expect(await search("%")).toEqual(["100% done with the design"]);
+      expect(await search("_")).toHaveLength(0);
+    });
+
+    it("ignores accents in both the query and the description", async () => {
+      const accented = ["Sesión de diseño con el año fiscal"];
+      expect(await search("sesion")).toEqual(accented);
+      expect(await search("sesión")).toEqual(accented);
+      expect(await search("diseno ano")).toEqual(accented);
+    });
+
+    it("combines with the other filters", async () => {
+      const results = await repo.findByFilter({
+        workspaceId,
+        search: "checkout",
+        range: DateRange.of(new Date("2026-02-01T00:00:00Z"), new Date("2026-03-01T00:00:00Z")),
+      });
+      expect(results).toHaveLength(0);
+    });
+
+    it("ignores a blank search instead of matching nothing", async () => {
+      expect(await search("   ")).toHaveLength(4);
+    });
+  });
+
   it("deletes an entry and its tag associations", async () => {
     const entry = TimeEntry.start({ workspaceId, description: "Coding", tagIds: [tagId] });
     await repo.save(entry);
