@@ -25,8 +25,6 @@ const { version } = JSON.parse(
   readFileSync(join(__dirname, "../../package.json"), "utf-8"),
 ) as { version: string };
 
-export const CLI_VERSION = version;
-
 /**
  * Wires every command onto a fresh `Command`. It lives apart from
  * `index.ts` (which runs the CLI on import) so the docs generator can read

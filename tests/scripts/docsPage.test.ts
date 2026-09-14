@@ -42,6 +42,13 @@ describe("docs page", () => {
     expect(html).toContain('"@type": "FAQPage"');
   });
 
+  // `chore: release vX.Y.Z` bumps package.json without regenerating this
+  // page, so a version baked into it would fail this suite on every single
+  // release — and did, once.
+  it("bakes in no version number", () => {
+    expect(html).not.toMatch(/\bv?\d+\.\d+\.\d+\b/);
+  });
+
   it("escapes flag placeholders instead of emitting raw markup", () => {
     expect(html).not.toMatch(/<td><code>[^<]*<(?!\/code>)/);
   });

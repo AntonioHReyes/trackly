@@ -23,7 +23,6 @@ interface CommandDoc {
 
 export interface DocsInput {
   program: Command;
-  version: string;
   faq: readonly FaqEntry[];
 }
 
@@ -157,7 +156,11 @@ function faqJsonLd(faq: readonly FaqEntry[]): string {
   );
 }
 
-function softwareJsonLd(version: string): string {
+// Deliberately carries no version number: the release workflow bumps
+// package.json without regenerating this page, so anything version-shaped
+// baked in here would be stale the moment it's published. The npm badge in
+// the header shows the current version instead, resolved at page load.
+function softwareJsonLd(): string {
   return JSON.stringify(
     {
       "@context": "https://schema.org",
@@ -168,7 +171,6 @@ function softwareJsonLd(version: string): string {
         "A local-first, Toggl-style time-tracking CLI with workspaces, projects, rates, PDF/CSV reports, PDF invoices, and a built-in MCP server for AI assistants.",
       applicationCategory: "DeveloperApplication",
       operatingSystem: "macOS, Linux, Windows",
-      softwareVersion: version,
       url: DOCS_URL,
       downloadUrl: NPM_URL,
       codeRepository: REPO_URL,
@@ -215,6 +217,7 @@ const STYLES = `  :root {
   h1 .cmd { color: var(--accent); font-family: var(--mono); }
   .lede { font-size: 18px; color: var(--fg-dim); max-width: 640px; margin: 0; }
   .version { font-family: var(--mono); font-size: 13px; color: var(--fg-dim); margin-top: 14px; }
+  .version .badge-img { height: 16px; vertical-align: -3px; }
 
   section { padding: 48px 0; border-bottom: 1px solid var(--border); }
   section:last-of-type { border-bottom: none; }
@@ -289,7 +292,7 @@ const STYLES = `  :root {
  * FAQ in, same bytes out — which is what lets a test catch a stale
  * `site/docs/index.html` instead of trusting everyone to regenerate it.
  */
-export function renderDocs({ program, version, faq }: DocsInput): string {
+export function renderDocs({ program, faq }: DocsInput): string {
   const commands = collectCommands(program);
   const globalOptions = optionDocs(program);
 
@@ -322,7 +325,7 @@ export function renderDocs({ program, version, faq }: DocsInput): string {
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230d1117%22/><text x=%2250%22 y=%2268%22 font-size=%2258%22 text-anchor=%22middle%22 fill=%22%2358f2a0%22 font-family=%22monospace%22>&gt;_</text></svg>" />
 
 <script type="application/ld+json">
-${softwareJsonLd(version)}
+${softwareJsonLd()}
 </script>
 
 <script type="application/ld+json">
@@ -344,7 +347,7 @@ ${STYLES}
       the commands and flags your installed <code>tck</code> accepts — nothing
       invented, nothing forgotten.
     </p>
-    <p class="version">Generated for v${escapeHtml(version)} · <a href="${REPO_URL}">source on GitHub</a></p>
+    <p class="version"><img class="badge-img" src="https://img.shields.io/npm/v/%40tonyakitori%2Ftrackly?style=flat-square&amp;label=&amp;color=58f2a0" alt="current version on npm" /> · <a href="${REPO_URL}">source on GitHub</a></p>
   </div>
 </header>
 

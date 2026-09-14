@@ -1,5 +1,5 @@
 import { Container } from "../../src/cli/container.js";
-import { buildProgram, CLI_VERSION } from "../../src/cli/program.js";
+import { buildProgram } from "../../src/cli/program.js";
 import { renderDocs } from "./renderDocs.js";
 import { FAQ } from "./faq.js";
 
@@ -12,7 +12,7 @@ import { FAQ } from "./faq.js";
 export function docsPage(): string {
   const container = new Container();
   try {
-    return renderDocs({ program: buildProgram(container), version: CLI_VERSION, faq: FAQ });
+    return renderDocs({ program: buildProgram(container), faq: FAQ });
   } finally {
     container.close();
   }
