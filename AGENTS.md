@@ -65,8 +65,13 @@ Fully automated, across two workflows because npm's trusted-publisher
 `.github/workflows/publish.yml` by name — nothing else is allowed to
 publish, so bumping and publishing can't be the same job:
 
-1. `.github/workflows/release.yml` runs on every push to `main` (except
-   changes only under `.github/workflows/`). It reads the triggering
+1. `.github/workflows/release.yml` runs on every push to `main` that
+   touches code. Pushes that only change the landing page (`site/`), any
+   `*.md`, `.claude/`, `LICENSE`, repo config, or the workflows themselves
+   release nothing — a landing-page tweak shouldn't bump the npm package.
+   Run the workflow manually (`workflow_dispatch`, with an explicit
+   `bump` input) to release one of those anyway, e.g. to push a README
+   fix onto the npm page. It reads the triggering
    commit's *header line* for a Conventional-Commits-ish prefix (`feat:` →
    minor, `<type>!:` header or a `BREAKING CHANGE:` footer → major,
    anything else → patch), bumps `package.json` with `npm version`,
