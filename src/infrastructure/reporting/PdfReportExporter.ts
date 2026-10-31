@@ -9,7 +9,7 @@ import { renderDonutChart } from "./charts/donutChart.js";
 import { drawHeaderBand, drawFooters } from "./pdf/pageChrome.js";
 import { drawKpiCards, type Kpi } from "./pdf/kpiCards.js";
 import { drawPaginatedTable, type TableColumn, type TableRow } from "./pdf/table.js";
-import { drawCard, drawSectionHeading, formatDuration, truncate } from "./pdf/primitives.js";
+import { drawCard, drawSectionHeading, formatDuration } from "./pdf/primitives.js";
 import { COLORS, SIZES, paletteColor } from "./pdf/theme.js";
 
 const CHART_INSET = 8;
@@ -109,7 +109,7 @@ export class PdfReportExporter implements ReportExporter {
       const share = data.totalHours > 0 ? project.hours / data.totalHours : 0;
       return {
         cells: [
-          { text: truncate(project.projectName, 34) },
+          { text: project.projectName },
           { text: formatDuration(project.hours) },
           { text: formatDuration(project.billableHours) },
           { text: project.amount.toDecimal().toFixed(2) },
@@ -166,12 +166,9 @@ export class PdfReportExporter implements ReportExporter {
       .map((entry) => ({
         cells: [
           { text: formatEntryDate(entry) },
-          { text: truncate(entry.description, 44) },
+          { text: entry.description },
           {
-            text: truncate(
-              entry.projectId ? (data.projectNameById.get(entry.projectId) ?? "—") : "—",
-              20,
-            ),
+            text: entry.projectId ? (data.projectNameById.get(entry.projectId) ?? "—") : "—",
           },
           { text: formatDuration(data.hoursByEntryId.get(entry.id) ?? entry.durationHours()) },
           { text: data.amountByEntryId.get(entry.id)?.toDecimal().toFixed(2) ?? "—" },

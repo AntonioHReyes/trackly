@@ -4,7 +4,7 @@ import type { InvoiceExporter } from "../../application/ports/InvoiceExporter.js
 import type { InvoiceData } from "../../application/services/InvoiceService.js";
 import { drawInvoiceHeaderBand, drawFooters } from "./pdf/pageChrome.js";
 import { drawPaginatedTable, type TableColumn, type TableRow } from "./pdf/table.js";
-import { drawSectionHeading, formatDuration, truncate } from "./pdf/primitives.js";
+import { drawSectionHeading, formatDuration } from "./pdf/primitives.js";
 import { COLORS, FONTS, SIZES } from "./pdf/theme.js";
 
 /**
@@ -76,7 +76,7 @@ export class PdfInvoiceExporter implements InvoiceExporter {
     ];
     const rows: TableRow[] = data.lineItems.map((item) => ({
       cells: [
-        { text: truncate(item.projectName, 40) },
+        { text: item.projectName },
         { text: formatDuration(item.hours) },
         { text: item.rate.toDecimal().toFixed(2) },
         { text: item.amount.toDecimal().toFixed(2) },

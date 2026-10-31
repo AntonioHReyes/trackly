@@ -20,12 +20,16 @@ export interface TableRow {
 }
 
 const HEADER_HEIGHT = 20;
-const ROW_HEIGHT = 19;
+const MIN_ROW_HEIGHT = 19;
 const CELL_PADDING = 8;
+const ROW_PADDING_Y = 5.5;
+const FONT_SIZE = 8.5;
+const LINE_GAP = 1.5;
 
 /**
- * A zebra-striped table with a tinted header. Rows are drawn one by one so
- * the caller can page-break between them; returns the `y` below the table.
+ * A zebra-striped table with a tinted header. Cell text wraps onto as many
+ * lines as it needs, so each row grows to fit its tallest cell. Returns the
+ * `y` below the table.
  */
 export function drawTable(
   doc: PDFKit.PDFDocument,
@@ -41,7 +45,7 @@ export function drawTable(
   doc.font(FONTS.bold).fontSize(7.5).fillColor(COLORS.muted);
   columns.forEach((column, index) => {
     doc.text(column.header.toUpperCase(), cellX(x, widths, index), y + 6.5, {
-      width: (widths[index] ?? 0) - CELL_PADDING * 2,
+      width: textWidth(widths, index),
       align: column.align ?? "left",
       characterSpacing: 0.6,
       lineBreak: false,
@@ -50,6 +54,7 @@ export function drawTable(
 
   let rowY = y + HEADER_HEIGHT;
   rows.forEach((row, rowIndex) => {
+    const height = rowHeight(doc, row, widths);
     if (row.emphasized) {
       doc
         .moveTo(x, rowY)
@@ -57,33 +62,27 @@ export function drawTable(
         .lineWidth(0.8)
         .stroke(COLORS.line);
     } else if (rowIndex % 2 === 1) {
-      doc.rect(x, rowY, width, ROW_HEIGHT).fill(COLORS.zebra);
+      doc.rect(x, rowY, width, height).fill(COLORS.zebra);
     }
 
     row.cells.forEach((cell, index) => {
       const columnX = cellX(x, widths, index);
-      const columnWidth = (widths[index] ?? 0) - CELL_PADDING * 2;
+      const columnWidth = textWidth(widths, index);
       if (cell.bar) {
-        drawShareBar(doc, cell.bar, columnX, rowY + ROW_HEIGHT / 2, columnWidth);
+        drawShareBar(doc, cell.bar, columnX, rowY + MIN_ROW_HEIGHT / 2, columnWidth);
       }
-      doc
-        .font(row.emphasized ? FONTS.bold : FONTS.regular)
-        .fontSize(8.5)
+      useRowFont(doc, row)
         .fillColor(row.emphasized ? COLORS.ink : COLORS.body)
-        .text(cell.text, columnX, rowY + 5.5, {
+        .text(cell.text, columnX, rowY + ROW_PADDING_Y, {
           width: columnWidth,
           align: columns[index]?.align ?? "left",
-          lineBreak: false,
+          lineGap: LINE_GAP,
         });
     });
-    rowY += ROW_HEIGHT;
+    rowY += height;
   });
 
   return rowY;
-}
-
-export function tableHeight(rowCount: number): number {
-  return HEADER_HEIGHT + rowCount * ROW_HEIGHT;
 }
 
 /**
@@ -99,21 +98,48 @@ export function drawPaginatedTable(
   width: number,
   bottomLimit: number,
 ): number {
-  const minimumChunk = HEADER_HEIGHT + ROW_HEIGHT * 3;
+  const widths = columnWidths(columns, width);
+  const heights = rows.map((row) => rowHeight(doc, row, widths));
   let cursor = y;
   let index = 0;
 
   while (index < rows.length) {
-    if (bottomLimit - cursor < minimumChunk) {
+    const firstRowHeight = heights[index] ?? MIN_ROW_HEIGHT;
+    const isFreshPage = cursor === doc.page.margins.top;
+    if (!isFreshPage && bottomLimit - cursor < HEADER_HEIGHT + firstRowHeight) {
       doc.addPage();
       cursor = doc.page.margins.top;
     }
-    const fit = Math.max(1, Math.floor((bottomLimit - cursor - HEADER_HEIGHT) / ROW_HEIGHT));
-    const chunk = rows.slice(index, index + fit);
-    cursor = drawTable(doc, columns, chunk, x, cursor, width);
-    index += chunk.length;
+    let available = bottomLimit - cursor - HEADER_HEIGHT;
+    let end = index;
+    while (end < rows.length && (end === index || (heights[end] ?? 0) <= available)) {
+      available -= heights[end] ?? 0;
+      end += 1;
+    }
+    cursor = drawTable(doc, columns, rows.slice(index, end), x, cursor, width);
+    index = end;
   }
   return cursor;
+}
+
+function rowHeight(doc: PDFKit.PDFDocument, row: TableRow, widths: readonly number[]): number {
+  useRowFont(doc, row);
+  const tallest = row.cells.reduce((max, cell, index) => {
+    const height = doc.heightOfString(cell.text, {
+      width: textWidth(widths, index),
+      lineGap: LINE_GAP,
+    });
+    return Math.max(max, height);
+  }, 0);
+  return Math.max(MIN_ROW_HEIGHT, Math.ceil(tallest - LINE_GAP + ROW_PADDING_Y * 2));
+}
+
+function useRowFont(doc: PDFKit.PDFDocument, row: TableRow): PDFKit.PDFDocument {
+  return doc.font(row.emphasized ? FONTS.bold : FONTS.regular).fontSize(FONT_SIZE);
+}
+
+function textWidth(widths: readonly number[], index: number): number {
+  return (widths[index] ?? 0) - CELL_PADDING * 2;
 }
 
 /** A slim track + fill drawn under the share percentage. */
