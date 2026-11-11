@@ -1,3 +1,6 @@
 allowBuilds:
   better-sqlite3: true
   esbuild: true
+trustPolicyExclude:
+  # Published manually by the undici maintainer (no provenance); required by @types/node 22.
+  - undici-types@6.21.0
